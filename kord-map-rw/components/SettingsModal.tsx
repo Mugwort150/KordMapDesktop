@@ -10,6 +10,7 @@ interface SettingsModalProps {
   saveSettings: (s: MapSettings) => void;
   close: () => void;
   editorPassword?: string;
+  mapName: string;
 }
 
 export default function SettingsModal({ settings, saveSettings, close, editorPassword }: SettingsModalProps) {
