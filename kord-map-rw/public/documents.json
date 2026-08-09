@@ -1,0 +1,35 @@
+{
+    "Customs": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Factory": {
+        "Documents": ["Blueprints and technical documentation", "Project Documentation"]
+    },
+    "GroundZero": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Interchange": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Labs": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Lighthouse": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Reserve": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Shoreline": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "StreetsOfTarkov": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Terminal": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    },
+    "Woods": {
+        "Documents": ["Financial Documents", "Project Documentation"]
+    }
+}

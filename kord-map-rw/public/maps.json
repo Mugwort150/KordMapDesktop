@@ -1,0 +1,35 @@
+{
+    "Customs": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Customs.svg"
+    },
+    "Factory": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Factory.svg"
+    },
+    "GroundZero": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/GroundZero.svg"
+    },
+    "Interchange": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Interchange.svg"
+    },
+    "Labs": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Labs.svg"
+    },
+    "Lighthouse": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Lighthouse.svg"
+    },
+    "Reserve": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Reserve.svg"
+    },
+    "Shoreline": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Shoreline.svg"
+    },
+    "StreetsOfTarkov": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/StreetsOfTarkov.svg"
+    },
+    "Terminal": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Terminal.svg"
+    },
+    "Woods": {
+        "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/Woods.svg"
+    }
+}
