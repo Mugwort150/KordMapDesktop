@@ -250,7 +250,7 @@ export default function Map({
       lat: pendingMarker.lat, lng: pendingMarker.lng, floorId: currentFloorId, mapName: mapName,
     };
 
-    let result: { success: boolean; marker?: any; autoApproved?: boolean } | undefined;
+    let result: any;
     if (editingMarkerId) {
       result = await updateMarker(editingMarkerId, payload, editorPassword);
       if (result.success && result.marker) {

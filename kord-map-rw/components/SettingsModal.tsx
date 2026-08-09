@@ -13,7 +13,13 @@ interface SettingsModalProps {
   mapName: string;
 }
 
-export default function SettingsModal({ settings, saveSettings, close, editorPassword }: SettingsModalProps) {
+export default function SettingsModal({ 
+  mapName, 
+  settings, 
+  saveSettings, 
+  close, 
+  editorPassword // Extract it here so the rest of the file can see it
+}: SettingsModalProps) {
   const [localSettings, setLocalSettings] = useState<MapSettings>(settings);
   
   // 🚀 Import Tool State
