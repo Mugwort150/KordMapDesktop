@@ -121,7 +121,7 @@ export default function SettingsModal({
             </label>
             <input 
               type="range" min="0.5" max="3" step="0.1"
-              value={localSettings.iconScale || 1}
+              value={localSettings.iconScale || 1.9}
               onChange={(e) => setLocalSettings({...localSettings, iconScale: parseFloat(e.target.value)})}
               className="w-full accent-blue-600"
             />
