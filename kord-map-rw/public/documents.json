@@ -1,35 +1,74 @@
 {
     "Customs": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Financial documents",
+            "Project documentation"
+        ]
     },
     "Factory": {
-        "Documents": ["Blueprints and technical documentation", "Project Documentation"]
+        "Documents": [
+            "Blueprints and technical documentation",
+            "Project documentation"
+        ]
     },
     "GroundZero": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Medical documents",
+            "User documentation"
+        ]
+    },
+    "Icebreaker": {
+        "Documents": [
+            "PMC personnel files",
+            "Test documentation"
+        ]
     },
     "Interchange": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Blueprints and technical documentation",
+            "Financial documents"
+        ]
     },
     "Labs": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Medical documents",
+            "User documentation"
+        ]
     },
     "Lighthouse": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "PMC personnel files",
+            "Technical documentation"
+        ]
     },
     "Reserve": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "PMC personnel files",
+            "Project documentation"
+        ]
     },
     "Shoreline": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Test documentation",
+            "Technical documentation"
+        ]
     },
     "StreetsOfTarkov": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Financial documents",
+            "User documentation"
+        ]
     },
-    "Terminal": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+    "TheLabyrinth": {
+        "Documents": [
+            "Blueprints and technical documentation",
+            "Medical documents"
+        ]
     },
     "Woods": {
-        "Documents": ["Financial Documents", "Project Documentation"]
+        "Documents": [
+            "Test documentation",
+            "Technical documentation"
+        ]
     }
 }
