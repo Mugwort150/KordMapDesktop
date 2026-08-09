@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Marker {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  lat         Float
+  lng         Float
+  floorId     String
+  type        String
+  imageUrl    String?  
+  submitter   String?  
+  approved    Boolean  @default(false)
+  originalId  String?  
+  mapName     String   @default("Customs") // 🚀 NEW: Ties marker to a map
+  createdAt   DateTime @default(now())
+}

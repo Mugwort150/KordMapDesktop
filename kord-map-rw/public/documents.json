@@ -1,0 +1,74 @@
+{
+    "Customs": {
+        "Documents": [
+            "Financial documents",
+            "Project documentation"
+        ]
+    },
+    "Factory": {
+        "Documents": [
+            "Blueprints and technical documentation",
+            "Project documentation"
+        ]
+    },
+    "GroundZero": {
+        "Documents": [
+            "Medical documents",
+            "User documentation"
+        ]
+    },
+    "Icebreaker": {
+        "Documents": [
+            "PMC personnel files",
+            "Test documentation"
+        ]
+    },
+    "Interchange": {
+        "Documents": [
+            "Blueprints and technical documentation",
+            "Financial documents"
+        ]
+    },
+    "Labs": {
+        "Documents": [
+            "Medical documents",
+            "User documentation"
+        ]
+    },
+    "Lighthouse": {
+        "Documents": [
+            "PMC personnel files",
+            "Technical documentation"
+        ]
+    },
+    "Reserve": {
+        "Documents": [
+            "PMC personnel files",
+            "Project documentation"
+        ]
+    },
+    "Shoreline": {
+        "Documents": [
+            "Test documentation",
+            "Technical documentation"
+        ]
+    },
+    "StreetsOfTarkov": {
+        "Documents": [
+            "Financial documents",
+            "User documentation"
+        ]
+    },
+    "TheLabyrinth": {
+        "Documents": [
+            "Blueprints and technical documentation",
+            "Medical documents"
+        ]
+    },
+    "Woods": {
+        "Documents": [
+            "Test documentation",
+            "Technical documentation"
+        ]
+    }
+}

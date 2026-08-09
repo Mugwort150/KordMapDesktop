@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 1. Change the default map cursor (use 'default' for a standard arrow, or 'crosshair' for precision) */
+.leaflet-container.leaflet-grab {
+  cursor: default !important; 
+}
+
+.leaflet-interactive {
+  cursor: pointer !important;
+}
+
+.leaflet-overlay-pane {
+  pointer-events: none !important;
+}
+
+.leaflet-overlay-pane svg {
+  pointer-events: none !important;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition-timing-function: linear !important;
+}
+
+/* Leaflet Popup Dark Theme Override */
+.leaflet-popup-content-wrapper {
+  background-color: #161616 !important;
+  color: white !important;
+  border-radius: 6px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  width: 280px !important;
+}
+
+.leaflet-popup-tip {
+  background-color: #161616 !important;
+}
+
+.leaflet-popup-close-button {
+  color: #999 !important;
+  margin-top: 8px !important;
+  margin-right: 8px !important;
+  background-color: #2a2a2a !important;
+  border-radius: 50% !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+  transition: all 0.2s !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: white !important;
+  background-color: #444 !important;
+}
+
+/* Drag Optimization */
+.leaflet-overlay-pane, .leaflet-overlay-pane svg {
+  pointer-events: none !important;
+}
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  transition-timing-function: linear !important;
+}
