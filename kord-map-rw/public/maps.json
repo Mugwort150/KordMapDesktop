@@ -19,5 +19,8 @@
     },
     "StreetsOfTarkov": {
         "map_url": "https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/refs/heads/main/StreetsOfTarkov.svg"
+    },
+    "Reserve": {
+        "map_url": "https://raw.githubusercontent.com/KalleLeskinen/KordMap/refs/heads/add_reserve/kord-map-rw/public/Reserve.svg"
     }
 }
