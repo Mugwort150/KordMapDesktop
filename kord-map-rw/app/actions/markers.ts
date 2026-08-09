@@ -7,7 +7,7 @@ import { put } from '@vercel/blob';
 // Increases the Node.js listener limit to handle large payloads during map initialization
 EventEmitter.defaultMaxListeners = 50;
 
-const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD || 'admin';
+const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD;
 
 /**
  * Uploads a Base64 image string to Vercel Blob Storage.
