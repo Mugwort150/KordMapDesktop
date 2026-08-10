@@ -18,6 +18,7 @@ model Marker {
   submitter   String?  
   approved    Boolean  @default(false)
   originalId  String?  
-  mapName     String   @default("Customs") // 🚀 NEW: Ties marker to a map
+  isDeletion  Boolean  @default(false) // 🚀 NEW: Flags if this is a deletion request
+  mapName     String   @default("Customs") 
   createdAt   DateTime @default(now())
 }

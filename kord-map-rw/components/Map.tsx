@@ -5,7 +5,8 @@ import { MapContainer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapSettings, Floor } from '@/app/page';
-import { createMarker, updateMarker, deleteMarker, uploadImage } from '@/app/actions/markers';
+import { createMarker, updateMarker, deleteMarker, uploadImage, suggestDeleteMarker } from '@/app/actions/markers'; // 🚀 Added 
+import { Plus, Minus, Sun } from 'lucide-react';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -19,7 +20,7 @@ const bounds: L.LatLngBoundsExpression = [[-NATIVE_SIZE, 0], [0, NATIVE_SIZE]];
 
 /**
  * Compresses and resizes an uploaded image to WebP format.
- * Returns a base64 string which is later uploaded to Vercel Blob.
+ * Ensures the output string stays under the 1MB Server Action payload limit.
  */
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -35,15 +36,23 @@ const compressImage = (file: File): Promise<string> => {
         const MAX_WIDTH = width > height ? 1920 : 1080;
         const MAX_HEIGHT = width > height ? 1080 : 1920;
         
-        if (width > MAX_WIDTH) { height = Math.round((height * MAX_WIDTH) / width); width = MAX_WIDTH; }
-        if (height > MAX_HEIGHT) { width = Math.round((width * MAX_HEIGHT) / height); height = MAX_HEIGHT; }
+        if (width > MAX_WIDTH) { 
+          height = Math.round((height * MAX_WIDTH) / width); 
+          width = MAX_WIDTH; 
+        }
+        if (height > MAX_HEIGHT) { 
+          width = Math.round((width * MAX_HEIGHT) / height); 
+          height = MAX_HEIGHT; 
+        }
         
-        canvas.width = width; canvas.height = height;
+        canvas.width = width; 
+        canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
         
         let quality = 0.9;
         let dataUrl = canvas.toDataURL('image/webp', quality);
+        
         while (dataUrl.length > 1000000 && quality > 0.1) {
           quality -= 0.1;
           dataUrl = canvas.toDataURL('image/webp', quality);
@@ -56,10 +65,79 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 /**
+ * Renders an image inside the marker popup with a loading skeleton.
+ */
+function PopupImage({ src, onClick }: { src: string; onClick: () => void }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div 
+      className="relative w-full h-32 bg-[#0a0a0a] border border-[#333] rounded overflow-hidden mt-1 cursor-zoom-in group"
+      onClick={onClick}
+    >
+      {!isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a1a] animate-pulse">
+          <svg className="w-6 h-6 text-gray-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      )}
+      <img 
+        src={src} 
+        loading="lazy" 
+        alt="Location" 
+        onLoad={() => setIsLoaded(true)}
+        className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+          isLoaded ? 'opacity-100 blur-0' : 'opacity-0 blur-sm'
+        }`} 
+      />
+    </div>
+  );
+}
+
+/**
+ * Renders an enlarged image overlay with a loading spinner.
+ */
+function LightboxImage({ src, onClose }: { src: string; onClose: () => void }) {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-[4000] bg-black/90 flex items-center justify-center p-8 cursor-zoom-out backdrop-blur-sm" onClick={onClose}>
+      {!isLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <svg className="w-10 h-10 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        </div>
+      )}
+      <img 
+        src={src} 
+        onLoad={() => setIsLoaded(true)}
+        className={`max-w-full max-h-full object-contain rounded shadow-2xl transition-all duration-300 ${
+          isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`} 
+        alt="Enlarged Location" 
+      />
+    </div>
+  );
+}
+
+interface SvgOverlayProps {
+  url: string;
+  hardwareAcceleration: boolean;
+  currentFloorId: string | null;
+  onFloorsLoaded: (floors: Floor[]) => void;
+  setAllFloors: (floors: Floor[]) => void;
+  brightness: number;
+}
+
+/**
  * Fetches, parses, and renders the raw SVG map.
  * Handles dynamic layer extraction and CSS-based floor transitions.
  */
-function LayeredSvgOverlay({ url, hardwareAcceleration, currentFloorId, onFloorsLoaded, setAllFloors }: any) {
+function LayeredSvgOverlay({ url, hardwareAcceleration, currentFloorId, onFloorsLoaded, setAllFloors, brightness }: SvgOverlayProps) {
   const map = useMap();
   const svgRef = useRef<SVGElement | null>(null);
   const floorsRef = useRef<Floor[]>([]);
@@ -67,12 +145,18 @@ function LayeredSvgOverlay({ url, hardwareAcceleration, currentFloorId, onFloors
   useEffect(() => {
     let isMounted = true;
     let svgLayer: L.SVGOverlay | null = null;
+    
     fetch(url).then((res) => res.text()).then((svgText) => {
         if (!isMounted) return;
+        
         const parser = new DOMParser();
         const doc = parser.parseFromString(svgText, "image/svg+xml");
         const svgElement = doc.documentElement as unknown as SVGElement;
-        if (!svgElement.getAttribute("viewBox")) svgElement.setAttribute("viewBox", `0 0 8192 8192`);
+        
+        if (!svgElement.getAttribute("viewBox")) {
+          svgElement.setAttribute("viewBox", `0 0 8192 8192`);
+        }
+        
         svgElement.setAttribute("shape-rendering", "optimizeSpeed");
         svgElement.style.pointerEvents = 'none';
         
@@ -98,7 +182,11 @@ function LayeredSvgOverlay({ url, hardwareAcceleration, currentFloorId, onFloors
         const uiFloors = extractedFloors.filter(f => f.name.toLowerCase().trim() !== 'ground level');
         onFloorsLoaded(uiFloors);
       });
-    return () => { isMounted = false; if (svgLayer) map.removeLayer(svgLayer); };
+      
+    return () => { 
+      isMounted = false; 
+      if (svgLayer) map.removeLayer(svgLayer); 
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, url]);
 
@@ -108,7 +196,13 @@ function LayeredSvgOverlay({ url, hardwareAcceleration, currentFloorId, onFloors
   }, [hardwareAcceleration]);
 
   useEffect(() => {
+    if (!svgRef.current) return;
+    svgRef.current.style.filter = `brightness(${brightness}%)`;
+  }, [brightness]);
+
+  useEffect(() => {
     if (!svgRef.current || !currentFloorId || floorsRef.current.length === 0) return;
+    
     const floors = floorsRef.current;
     const currentIndex = floors.findIndex(f => f.id === currentFloorId);
     if (currentIndex === -1) return;
@@ -123,18 +217,28 @@ function LayeredSvgOverlay({ url, hardwareAcceleration, currentFloorId, onFloors
       gNode.style.transition = 'opacity 0.4s ease-in-out, filter 0.4s ease-in-out, visibility 0.4s ease-in-out';
 
       if (floor.name.toLowerCase().trim() === 'ground level' && isFirstFloorSelected) {
-        gNode.style.visibility = 'visible'; gNode.style.opacity = '1'; gNode.style.filter = 'none'; return; 
+        gNode.style.visibility = 'visible'; 
+        gNode.style.opacity = '1'; 
+        gNode.style.filter = 'none'; 
+        return; 
       }
       
       if (index > currentIndex) { 
-        gNode.style.visibility = 'hidden'; gNode.style.opacity = '0'; gNode.style.filter = 'none';
+        gNode.style.visibility = 'hidden'; 
+        gNode.style.opacity = '0'; 
+        gNode.style.filter = 'none';
       } else if (index === currentIndex) { 
-        gNode.style.visibility = 'visible'; gNode.style.opacity = '1'; gNode.style.filter = 'none'; 
+        gNode.style.visibility = 'visible'; 
+        gNode.style.opacity = '1'; 
+        gNode.style.filter = 'none'; 
       } else if (index < currentIndex) { 
-        gNode.style.visibility = 'visible'; gNode.style.opacity = '0.35'; gNode.style.filter = 'brightness(0.25) grayscale(0.6)'; 
+        gNode.style.visibility = 'visible'; 
+        gNode.style.opacity = '0.35'; 
+        gNode.style.filter = 'brightness(0.25) grayscale(0.6)'; 
       }
     });
   }, [currentFloorId]);
+  
   return null;
 }
 
@@ -154,7 +258,7 @@ function MapSettingsController({ settings }: { settings: MapSettings }) {
 /**
  * Smoothly pans and zooms the map to a specific coordinate.
  */
-function FlyToController({ flyToMarker, setFlyToMarker }: any) {
+function FlyToController({ flyToMarker, setFlyToMarker }: { flyToMarker: any, setFlyToMarker: any }) {
   const map = useMap();
   useEffect(() => {
     if (flyToMarker) {
@@ -165,12 +269,82 @@ function FlyToController({ flyToMarker, setFlyToMarker }: any) {
   return null;
 }
 
+/**
+ * Renders custom map controls (Zoom and Brightness) and blocks click-propagation to the map.
+ */
+function MapCustomControls({ brightness, setBrightness }: { brightness: number, setBrightness: (v: number) => void }) {
+  const map = useMap();
+  const [isOpen, setIsOpen] = useState(false);
+  const controlRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (controlRef.current) {
+      L.DomEvent.disableClickPropagation(controlRef.current);
+      L.DomEvent.disableScrollPropagation(controlRef.current);
+    }
+  }, []);
+
+  const handleBrightnessClick = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      setBrightness(100);
+    } else {
+      setIsOpen(true);
+      setBrightness(50);
+    }
+  };
+
+  return (
+    <div ref={controlRef} className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+      <div className="flex flex-col bg-[#1a1a1a] rounded-lg border border-[#333] shadow-xl overflow-hidden">
+        <button title="Zoom In" onClick={() => map.zoomIn()} className="p-2 hover:bg-[#333] text-white border-b border-[#333] transition-colors"><Plus size={18}/></button>
+        <button title="Zoom Out" onClick={() => map.zoomOut()} className="p-2 hover:bg-[#333] text-white transition-colors"><Minus size={18}/></button>
+      </div>
+      
+      <div className="relative flex flex-col bg-[#1a1a1a] rounded-lg border border-[#333] shadow-xl">
+        <button 
+          title="Map Brightness"
+          onClick={handleBrightnessClick} 
+          className={`p-2 transition-colors ${isOpen ? 'bg-[#333] text-[#e68c3a]' : 'hover:bg-[#333] text-white'}`}
+        >
+          <Sun size={18}/>
+        </button>
+        {isOpen && (
+          <div className="absolute top-full right-0 mt-2 bg-[#1a1a1a] border border-[#333] rounded-lg p-3 shadow-xl flex flex-col items-center gap-4">
+            <span className="text-xs text-gray-400 font-bold">{brightness}%</span>
+            <div className="h-24 w-6 flex items-center justify-center">
+              <input
+                type="range"
+                min="10"
+                max="100"
+                value={brightness}
+                onChange={(e) => setBrightness(parseInt(e.target.value))}
+                className="w-24 h-1 bg-[#444] rounded appearance-none outline-none accent-[#e68c3a] -rotate-90 origin-center cursor-pointer"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface MapProps { 
-  mapName: string; mapUrl: string; mode: 'view' | 'edit'; settings: MapSettings; 
-  currentFloorId: string | null; setCurrentFloorId: (id: string) => void; 
-  onFloorsLoaded: (floors: Floor[]) => void; editorPassword?: string;
-  markers: any[]; setMarkers: any; markerTypes: Record<string, string[]>; activeFilters: string[];
-  flyToMarker: any; setFlyToMarker: any; addLocalPendingId: (id: string) => void;
+  mapName: string; 
+  mapUrl: string; 
+  mode: 'view' | 'edit'; 
+  settings: MapSettings; 
+  currentFloorId: string | null; 
+  setCurrentFloorId: (id: string) => void; 
+  onFloorsLoaded: (floors: Floor[]) => void; 
+  editorPassword?: string;
+  markers: any[]; 
+  setMarkers: any; 
+  markerTypes: Record<string, string[]>; 
+  activeFilters: string[];
+  flyToMarker: any; 
+  setFlyToMarker: any;
+  addLocalPendingId: (id: string) => void;
 }
 
 export default function Map({ 
@@ -183,35 +357,21 @@ export default function Map({
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [isRelocating, setIsRelocating] = useState(false);
   
-  
   const [formData, setFormData] = useState({ title: '', description: '', type: '', imageUrl: '', submitter: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
-  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [brightness, setBrightness] = useState(100);
 
-  useEffect(() => { if (mode === 'view') handleCloseModal(); }, [mode]);
+  useEffect(() => { 
+    if (mode === 'view') handleCloseModal(); 
+  }, [mode]);
 
-  const handleCloseModal = () => {
-    setPendingMarker(null); setEditingMarkerId(null); setIsRelocating(false);
-    setFormData({ title: '', description: '', type: '', imageUrl: '', submitter: '' });
-  };
-
-  const MapClickHandler = () => {
-    useMapEvents({
-      click: (e) => {
-        if (mode !== 'edit' || !currentFloorId) return;
-        setPendingMarker({ lat: e.latlng.lat, lng: e.latlng.lng });
-        setIsRelocating(false);
-      },
-    });
-    return null;
-  };
-
-  // Cooldown Tracker
   useEffect(() => {
     const checkCooldown = () => {
       if (editorPassword) {
@@ -231,23 +391,56 @@ export default function Map({
     return () => clearInterval(interval);
   }, [editorPassword]);
 
+  const handleCloseModal = () => {
+    setPendingMarker(null); 
+    setEditingMarkerId(null); 
+    setIsRelocating(false);
+    setFormData({ title: '', description: '', type: '', imageUrl: '', submitter: '' });
+  };
+
+  const MapClickHandler = () => {
+    useMapEvents({
+      click: (e) => {
+        if (mode !== 'edit' || !currentFloorId) return;
+        setPendingMarker({ lat: e.latlng.lat, lng: e.latlng.lng });
+        setIsRelocating(false);
+      },
+    });
+    return null;
+  };
+
   const handleEditClick = (marker: any) => {
     setEditingMarkerId(marker.id);
     setPendingMarker({ lat: marker.lat, lng: marker.lng });
-    setFormData({ title: marker.title, description: marker.description || '', type: marker.type, imageUrl: marker.imageUrl || '', submitter: marker.submitter || '' });
+    setFormData({ 
+      title: marker.title, 
+      description: marker.description || '', 
+      type: marker.type, 
+      imageUrl: marker.imageUrl || '', 
+      submitter: marker.submitter || '' 
+    });
   };
 
   const handleDeleteClick = async (id: string) => {
-    if (!editorPassword) return alert("Only editors can delete markers.");
+    if (!editorPassword) {
+      if (!confirm("Suggest removing this marker from the map?")) return;
+      const res = await suggestDeleteMarker(id);
+      if (res.success) alert("Deletion suggestion submitted for approval.");
+      else alert("Error submitting deletion suggestion.");
+      return;
+    }
+    
+    // Admin Delete
     if (!confirm("Are you sure you want to delete this marker?")) return;
     const res = await deleteMarker(id, editorPassword);
-    if (res.success) setMarkers((prev: any[]) => prev.filter(m => m.id !== id));
+    if (res.success) {
+      setMarkers((prev: any[]) => prev.filter(m => m.id !== id));
+    }
   };
 
   const handleSaveMarker = async () => {
     if (!pendingMarker || !currentFloorId || !formData.title.trim() || !formData.type) return;
 
-    // 1. Check Cooldown
     if (!editorPassword) {
       const lastSub = localStorage.getItem('kordLastSubmission');
       if (lastSub && Date.now() - parseInt(lastSub, 10) < 25000) {
@@ -261,11 +454,10 @@ export default function Map({
     try {
       let finalImageUrl = formData.imageUrl;
 
-      // 2. Handle Image Upload
       if (finalImageUrl.startsWith('data:image')) {
         setIsProcessingImage(true);
         const uploadedUrl = await uploadImage(finalImageUrl);
-        setIsProcessingImage(false); // Clear processing state
+        setIsProcessingImage(false);
         
         if (uploadedUrl) {
           finalImageUrl = uploadedUrl;
@@ -276,14 +468,18 @@ export default function Map({
         }
       }
 
-      // 3. Prepare Payload
       const payload = {
-        title: formData.title, description: formData.description, type: formData.type, 
-        imageUrl: finalImageUrl, submitter: formData.submitter,
-        lat: pendingMarker.lat, lng: pendingMarker.lng, floorId: currentFloorId, mapName: mapName,
+        title: formData.title, 
+        description: formData.description, 
+        type: formData.type, 
+        imageUrl: finalImageUrl, 
+        submitter: formData.submitter,
+        lat: pendingMarker.lat, 
+        lng: pendingMarker.lng, 
+        floorId: currentFloorId, 
+        mapName: mapName,
       };
 
-      // 4. Send to Database
       let result;
       if (editingMarkerId) {
         result = await updateMarker(editingMarkerId, payload, editorPassword);
@@ -291,50 +487,41 @@ export default function Map({
         result = await createMarker(payload, editorPassword);
       }
 
-      // 5. Handle Success
       if (result?.success && result.marker) {
-        
-        // Safely add to local pending list if it's a guest submission
         if (!result.autoApproved && typeof addLocalPendingId === 'function') {
           addLocalPendingId(result.marker.id);
         }
 
-        // Update local map markers
         if (editingMarkerId && result.autoApproved) {
           setMarkers((prev: any[]) => prev.map(m => m.id === editingMarkerId ? result.marker : m));
         } else {
           setMarkers((prev: any[]) => [result.marker, ...prev]);
         }
 
-        // Trigger cooldown for guests
         if (!editorPassword) {
           localStorage.setItem('kordLastSubmission', Date.now().toString());
-          setCooldownRemaining(60);
+          setCooldownRemaining(25);
         }
         
-        // Trigger Success Animation
         setSubmitSuccess(true);
         setTimeout(() => { 
           setSubmitSuccess(false); 
           handleCloseModal(); 
         }, 1000);
-        
       } else {
         alert("Error saving marker to database.");
       }
-      
     } catch (err) {
       console.error("Fatal error during save:", err);
       alert("An unexpected error occurred.");
     } finally {
-      // 🚀 FAILSAFE: Guarantee the button is unlocked no matter what happens!
       setIsSubmitting(false);
     }
   };
 
-
   const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault(); setIsDragging(false);
+    e.preventDefault(); 
+    setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith('image/')) {
       setIsProcessingImage(true);
@@ -354,7 +541,7 @@ export default function Map({
     }
   };
 
-/**
+  /**
    * Generates a custom Leaflet divIcon.
    * Applies ghosting styles and an arrow indicator if the marker is on a different floor.
    */
@@ -366,10 +553,10 @@ export default function Map({
     let arrowHtml = '';
     
     if (isGhost) {
-      ghostStyles = `opacity: 0.5; filter: grayscale(0.5);`; 
+      ghostStyles = `opacity: 0.3; filter: grayscale(0.5);`; 
       const arrowColor = direction === 'up' ? '#22c55e' : '#ef4444';
       const arrowChar = direction === 'up' ? '▲' : '▼';
-      arrowHtml = `<div style="position: absolute; top: -${4 * scale}px; right: -${4 * scale}px; width: ${14 * scale}px; height: ${14 * scale}px; background: rgba(0,0,0,0.5); border-radius: 50%; border: 1px solid #444; color: ${arrowColor}; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: ${9 * scale}px; font-weight: bold; line-height: 1;">${arrowChar}</div>`;
+      arrowHtml = `<div style="position: absolute; top: -${4 * scale}px; right: -${4 * scale}px; width: ${14 * scale}px; height: ${14 * scale}px; background: rgba(0,0,0,0.8); border-radius: 50%; border: 1px solid #444; color: ${arrowColor}; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: ${9 * scale}px; font-weight: bold; line-height: 1;">${arrowChar}</div>`;
     }
     
     return L.divIcon({
@@ -377,7 +564,6 @@ export default function Map({
                <img src="/icons/${typeId}.png" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(1px 1px 0px white) drop-shadow(-1px 1px 0px white) drop-shadow(1px -1px 0px white) drop-shadow(-1px -1px 0px white) drop-shadow(0px 3px 6px rgba(0,0,0,0.6));" />
                ${arrowHtml}
              </div>`,
-      // Add the marker-type class for tracking, and the is-ghost class for dashed line rendering
       className: `bg-transparent border-none marker-type-${typeId} ${isGhost ? 'is-ghost' : ''}`, 
       iconSize: [size, size], 
       iconAnchor: [size / 2, size / 2], 
@@ -385,18 +571,26 @@ export default function Map({
     });
   };
 
-  const pendingEdits = markers.filter(m => !m.approved && m.originalId);
+ // 🚀 UPDATED: Local Diffing Logic
+  // 1. We find all pending edits, ignoring deletion requests (since deletion requests shouldn't hide the original!)
+  const pendingEdits = markers.filter(m => !m.approved && m.originalId && !m.isDeletion);
   const hiddenOriginalIds = new Set(pendingEdits.map(m => m.originalId));
-  const visibleMarkers = markers.filter(m => !hiddenOriginalIds.has(m.id));
+  
+  // 2. We filter out the originals that are being edited, AND we completely hide the deletion requests from the map
+  const visibleMarkers = markers.filter(m => !hiddenOriginalIds.has(m.id) && !m.isDeletion);
 
   return (
     <div className="relative w-full h-full">
       <MapContainer crs={L.CRS.Simple} bounds={bounds} maxZoom={3} minZoom={-5} zoomControl={false} style={{ height: '100%', width: '100%', backgroundColor: '#121212' }}>
         <MapSettingsController settings={settings} />
         <FlyToController flyToMarker={flyToMarker} setFlyToMarker={setFlyToMarker} />
-        <LayeredSvgOverlay url={mapUrl} hardwareAcceleration={settings.hardwareAcceleration} currentFloorId={currentFloorId} onFloorsLoaded={onFloorsLoaded} setAllFloors={setAllFloors} />
+        
+        <MapCustomControls brightness={brightness} setBrightness={setBrightness} />
+
+        <LayeredSvgOverlay url={mapUrl} hardwareAcceleration={settings.hardwareAcceleration} currentFloorId={currentFloorId} onFloorsLoaded={onFloorsLoaded} setAllFloors={setAllFloors} brightness={brightness} />
         <MapClickHandler />
 
+        {/* 🚀 Now iterating over visibleMarkers so the map stays clean! */}
         {visibleMarkers
           .filter((marker) => activeFilters.includes(marker.type))
           .filter((marker) => marker.id !== editingMarkerId)
@@ -404,6 +598,7 @@ export default function Map({
             const currentIndex = allFloors.findIndex(f => f.id === currentFloorId);
             const markerIndex = allFloors.findIndex(f => f.id === marker.floorId);
             const isGhost = currentIndex !== -1 && markerIndex !== -1 && currentIndex !== markerIndex;
+            
             let direction: 'up' | 'down' | null = null;
             if (isGhost) direction = markerIndex > currentIndex ? 'up' : 'down';
 
@@ -439,17 +634,22 @@ export default function Map({
                            <p className="text-[10px] text-gray-600 font-medium">{new Date(marker.createdAt).toLocaleDateString()}</p>
                         </div>
                         {marker.imageUrl && (
-                          <div className="w-full h-32 bg-[#0a0a0a] border border-[#333] rounded overflow-hidden flex items-center justify-center mt-1 cursor-zoom-in" onClick={() => setEnlargedImage(marker.imageUrl)}>
-                            {/* Native lazy loading ensures images only consume bandwidth when the popup is opened */}
-                            <img src={marker.imageUrl} loading="lazy" alt="Location" className="w-full h-full object-cover transition-transform hover:scale-105" />
-                          </div>
+                          <PopupImage src={marker.imageUrl} onClick={() => setEnlargedImage(marker.imageUrl)} />
                         )}
                         {mode === 'edit' && (
                           <div className="flex gap-2 mt-2">
-                            <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleEditClick(marker); }} className="flex-1 bg-[#222] border border-[#333] hover:bg-[#333] py-2 rounded text-[11px] font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors">Edit</button>
-                            {editorPassword && (
-                              <button onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteClick(marker.id); }} className="flex-1 bg-[#7a2c2c] hover:bg-[#8f3636] py-2 rounded text-[11px] font-bold uppercase tracking-wider text-white transition-colors">Delete</button>
-                            )}
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleEditClick(marker); }} 
+                              className="flex-1 bg-[#222] border border-[#333] hover:bg-[#333] py-2 rounded text-[11px] font-bold uppercase tracking-wider text-gray-300 hover:text-white transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDeleteClick(marker.id); }} 
+                              className="flex-1 bg-[#7a2c2c] hover:bg-[#8f3636] py-2 rounded text-[11px] font-bold uppercase tracking-wider text-white transition-colors"
+                            >
+                              Delete
+                            </button>
                           </div>
                         )}
                       </div>
@@ -557,28 +757,21 @@ export default function Map({
               </div>
 
               <div className="flex gap-2 mt-5">
-              <button onClick={handleCloseModal} className="flex-1 bg-[#333] hover:bg-[#444] py-2 rounded text-sm transition-colors">Cancel</button>
-              <button 
-                onClick={handleSaveMarker} 
-                disabled={isSubmitting || isProcessingImage || !formData.title.trim() || !formData.type || cooldownRemaining > 0}
-                className="flex-1 bg-[#e68c3a] hover:bg-[#cf7d34] disabled:opacity-50 disabled:cursor-not-allowed py-2 rounded text-sm transition-colors font-medium shadow text-black"
-              >
-                {isSubmitting ? 'Saving...' : 
-                 isProcessingImage ? 'Compressing...' : 
-                 cooldownRemaining > 0 ? `Wait (${cooldownRemaining}s)` : 
-                 (editorPassword ? 'Publish' : 'Submit')}
-              </button>
-            </div>
+                <button onClick={handleCloseModal} className="flex-1 bg-[#333] hover:bg-[#444] py-2 rounded text-sm transition-colors">Cancel</button>
+                <button 
+                  onClick={handleSaveMarker} 
+                  disabled={isSubmitting || isProcessingImage || !formData.title.trim() || !formData.type || cooldownRemaining > 0}
+                  className="flex-1 bg-[#e68c3a] hover:bg-[#cf7d34] disabled:opacity-50 disabled:cursor-not-allowed py-2 rounded text-sm transition-colors font-medium shadow text-black"
+                >
+                  {isSubmitting ? 'Saving...' : isProcessingImage ? 'Compressing...' : cooldownRemaining > 0 ? `Wait (${cooldownRemaining}s)` : (editorPassword ? 'Publish' : 'Submit')}
+                </button>
+              </div>
             </>
           )}
         </div>
       )}
 
-      {enlargedImage && (
-        <div className="fixed inset-0 z-[4000] bg-black/90 flex items-center justify-center p-8 cursor-zoom-out backdrop-blur-sm" onClick={() => setEnlargedImage(null)}>
-          <img src={enlargedImage} className="max-w-full max-h-full object-contain rounded shadow-2xl" alt="Enlarged Location" />
-        </div>
-      )}
+      {enlargedImage && <LightboxImage src={enlargedImage} onClose={() => setEnlargedImage(null)} />}
     </div>
   );
 }

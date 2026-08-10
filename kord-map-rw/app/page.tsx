@@ -227,7 +227,7 @@ export default function Home() {
 
   const changelog = [
     ...markers.filter(m => m.approved).map(m => ({ ...m, status: 'approved' })),
-    ...(editorPassword ? pendingQueue.map(m => ({ ...m, status: m.originalId ? 'pending-edit' : 'pending-new' })) : [])
+    ...(editorPassword ? pendingQueue.map(m => ({ ...m, status: m.isDeletion ? 'pending-delete' : m.originalId ? 'pending-edit' : 'pending-new' })) : [])
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Reusable Login Modal Component
@@ -315,7 +315,7 @@ export default function Home() {
                 return (
                   <div key={name} className="flex flex-col items-center w-full">
                     <button onClick={() => setSelectedMap({ name, url: data.map_url })} className={`relative overflow-hidden group rounded-xl border-2 transition-all duration-500 flex flex-col items-center justify-center min-h-[250px] w-full ${hasRequiredFilters ? 'border-[#333] hover:border-[#e68c3a] hover:scale-105 shadow-2xl opacity-100' : 'border-[#222] opacity-30 grayscale scale-95 pointer-events-none'}`}>
-                      {data.cover_url ? <div className="absolute inset-0 bg-cover bg-center blur-md group-hover:blur-0 transition-all duration-700 scale-110 group-hover:scale-100" style={{ backgroundImage: `url(${data.cover_url})` }} /> : <div className="absolute inset-0 bg-[#1a1a1a]" />}
+                      {data.cover_url ? <div className="absolute inset-0 bg-cover bg-center blur-[8px] group-hover:blur-[2px] transition-all duration-700 scale-110 group-hover:scale-100" style={{ backgroundImage: `url(${data.cover_url})` }} /> : <div className="absolute inset-0 bg-[#1a1a1a]" />}
                       <div className="absolute inset-0 bg-black/70 group-hover:bg-black/50 transition-all duration-500" />
                       <div className="relative z-10 flex flex-col items-center gap-4 w-full px-4">
                         <h2 className="text-3xl font-bold uppercase tracking-wider text-white group-hover:text-[#e68c3a] transition-colors drop-shadow-lg">{name}</h2>
@@ -351,7 +351,7 @@ export default function Home() {
     );
   }
 
-  return (
+      return (
     <main className="flex h-screen w-full bg-[#121212] overflow-hidden text-white relative">
       <ConnectionLinesOverlay hoveredFilter={hoveredFilter} />
       <Sidebar 
@@ -391,7 +391,11 @@ export default function Home() {
                     <div>
                       <h3 className="font-bold text-sm flex items-center gap-2">
                         {m.title}
-                        {m.status !== 'approved' && <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.status === 'pending-edit' ? 'bg-blue-600' : 'bg-green-600'}`}>{m.status === 'pending-edit' ? 'PENDING EDIT' : 'PENDING NEW'}</span>}
+                        {m.status !== 'approved' && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.status === 'pending-delete' ? 'bg-red-600' : m.status === 'pending-edit' ? 'bg-blue-600' : 'bg-green-600'}`}>
+                            {m.status === 'pending-delete' ? 'PENDING DELETE' : m.status === 'pending-edit' ? 'PENDING EDIT' : 'PENDING NEW'}
+                          </span>
+                        )}
                       </h3>
                       <p className="text-xs text-gray-400">{m.type.replace(/-/g, ' ')} • {formatDate(m.createdAt, !!editorPassword)}{m.submitter && ` • By ${m.submitter}`}</p>
                     </div>
@@ -424,7 +428,10 @@ export default function Home() {
                         <div>
                           <h3 className="font-bold text-[#e68c3a] uppercase text-xs flex items-center gap-2">
                             {m.type.replace(/-/g, ' ')}
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.originalId ? 'bg-blue-600' : 'bg-green-600'}`}>{m.originalId ? 'EDIT' : 'NEW'}</span>
+                            {/* 🚀 Dynamic Status Badges */}
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.isDeletion ? 'bg-red-600' : m.originalId ? 'bg-blue-600' : 'bg-green-600'}`}>
+                              {m.isDeletion ? 'DELETION' : m.originalId ? 'EDIT' : 'NEW'}
+                            </span>
                           </h3>
                           <p className="font-bold text-sm text-white">{m.title}</p>
                           {m.submitter && <p className="text-xs text-gray-400">By: {m.submitter}</p>}
@@ -443,7 +450,13 @@ export default function Home() {
                         }} className="bg-[#7a2c2c] hover:bg-[#8f3636] px-3 py-1.5 rounded text-xs font-bold text-white transition-colors">Reject</button>
                       </div>
                     </div>
-                    {orig && (
+                    
+                    {/* 🚀 Show Deletion Warning OR Edit Diffs */}
+                    {m.isDeletion ? (
+                      <div className="mt-3 p-2 bg-[#1f1f1f] rounded border border-red-900/50 text-xs space-y-1">
+                        <p className="text-red-400 font-bold">User requested to permanently delete this marker.</p>
+                      </div>
+                    ) : orig && (
                       <div className="mt-3 p-2 bg-[#1f1f1f] rounded border border-[#333] text-xs space-y-1">
                         <p className="text-gray-400 font-bold mb-1">Proposed Changes:</p>
                         {orig.title !== m.title && <p>Location: <span className="line-through text-gray-500">{orig.title}</span> <span className="text-green-400">➔ {m.title}</span></p>}

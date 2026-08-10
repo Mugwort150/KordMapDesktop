@@ -39,6 +39,12 @@ export async function getAllApprovedMarkerStats() {
   });
 }
 
+export async function deleteMarker(id: string, password: string) {
+  if (password !== EDITOR_PASSWORD) return { success: false };
+  await prisma.marker.delete({ where: { id } });
+  return { success: true };
+}
+
 export async function getAllPendingMarkerStats(password: string) {
   if (password !== EDITOR_PASSWORD) return [];
   return prisma.marker.findMany({
@@ -86,6 +92,24 @@ export async function createMarker(data: any, password?: string) {
   }
 }
 
+// 🚀 NEW: Guest Deletion Suggestion
+export async function suggestDeleteMarker(id: string) {
+  try {
+    const original = await prisma.marker.findUnique({ where: { id } });
+    if (!original) return { success: false, error: "Marker not found" };
+
+    const pendingDelete = await prisma.marker.create({
+      data: {
+        title: original.title, description: original.description, lat: original.lat, lng: original.lng,
+        floorId: original.floorId, type: original.type, imageUrl: original.imageUrl, 
+        submitter: "Guest (Deletion Request)", mapName: original.mapName,
+        approved: false, originalId: id, isDeletion: true // Flags it for the approval queue
+      }
+    });
+    return { success: true, marker: pendingDelete };
+  } catch (error) { return { success: false, error: "Failed to suggest deletion" }; }
+}
+
 export async function updateMarker(id: string, data: any, password?: string) {
   try {
     const isEditor = password === EDITOR_PASSWORD;
@@ -117,17 +141,19 @@ export async function approveMarker(id: string, password: string) {
   if (password !== EDITOR_PASSWORD) return { success: false };
   const marker = await prisma.marker.findUnique({ where: { id } });
   
+  // 🚀 If it's a deletion request, delete BOTH the original and the request!
+  if (marker?.isDeletion) {
+    if (marker.originalId) await prisma.marker.delete({ where: { id: marker.originalId } }).catch(() => {});
+    await prisma.marker.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // Standard Edit Approval
   if (marker?.originalId) {
     await prisma.marker.delete({ where: { id: marker.originalId } }).catch(() => {});
   }
   
   await prisma.marker.update({ where: { id }, data: { approved: true, originalId: null } });
-  return { success: true };
-}
-
-export async function deleteMarker(id: string, password: string) {
-  if (password !== EDITOR_PASSWORD) return { success: false };
-  await prisma.marker.delete({ where: { id } });
   return { success: true };
 }
 
