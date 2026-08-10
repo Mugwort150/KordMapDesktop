@@ -19,7 +19,7 @@
     },
     "Icebreaker": {
         "Documents": [
-            "PMC personnel files",
+            "Pmc personnel files",
             "Test documentation"
         ]
     },
@@ -37,13 +37,13 @@
     },
     "Lighthouse": {
         "Documents": [
-            "PMC personnel files",
+            "Pmc personnel files",
             "Technical documentation"
         ]
     },
     "Reserve": {
         "Documents": [
-            "PMC personnel files",
+            "Pmc personnel files",
             "Project documentation"
         ]
     },

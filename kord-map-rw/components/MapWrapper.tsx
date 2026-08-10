@@ -20,7 +20,7 @@ interface MapWrapperProps {
   activeFilters: string[];
   flyToMarker: any;
   setFlyToMarker: any;
-  addLocalPendingId: (id: string) => void; // 🚀 NEW
+  addLocalPendingId: (id: string) => void;
 }
 
 export default function MapWrapper(props: MapWrapperProps) {
