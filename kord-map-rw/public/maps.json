@@ -28,7 +28,15 @@
         "cover_url":"https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/4/41/Banner_streets.png/revision/latest/scale-to-width-down/300?cb=20250317202733"
     },
     "Reserve": {
-        "map_url": "https://raw.githubusercontent.com/KalleLeskinen/KordMap/refs/heads/add_reserve/kord-map-rw/public/Reserve.svg",
+        "map_url": "https://raw.githubusercontent.com/KalleLeskinen/KordMap/refs/heads/New-Maps/kord-map-rw/public/Custom%20Maps/Reserve.svg",
         "cover_url": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/f/f4/Reserve.png/revision/latest/scale-to-width-down/300?cb=20250317202816"
+    },
+    "Woods": {
+        "map_url": "https://raw.githubusercontent.com/KalleLeskinen/KordMap/refs/heads/New-Maps/kord-map-rw/public/Custom%20Maps/Woods.svg",
+        "cover_url": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/3/3e/Banner_woods.png/revision/latest/scale-to-width-down/300?cb=20250317202806"
+    },
+    "Lighthouse": {
+        "map_url": "https://raw.githubusercontent.com/KalleLeskinen/KordMap/refs/heads/New-Maps/kord-map-rw/public/Custom%20Maps/Lighthouse.svg",  
+        "cover_url": "https://static.wikia.nocookie.net/escapefromtarkov_gamepedia/images/d/dc/Banner_lighthouse.png/revision/latest/scale-to-width-down/300?cb=20250317202824"
     }
 }
