@@ -4,15 +4,17 @@ import prisma from '@/lib/prisma';
 import { EventEmitter } from 'events';
 import { put } from '@vercel/blob';
 
-// Increases the Node.js listener limit to handle large payloads during map initialization
 EventEmitter.defaultMaxListeners = 50;
 
 const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD;
 
-/**
- * Uploads a Base64 image string to Vercel Blob Storage.
- * Returns the public URL of the uploaded image.
- */
+// 🚀 NEW: Secure Password Verification with Anti-Brute-Force Delay
+export async function verifyEditorPassword(password: string) {
+  // Artificial 1-second delay slows down automated brute-force attacks
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return password === EDITOR_PASSWORD;
+}
+
 export async function uploadImage(base64Image: string): Promise<string | null> {
   try {
     const matches = base64Image.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
@@ -30,9 +32,21 @@ export async function uploadImage(base64Image: string): Promise<string | null> {
   }
 }
 
-/**
- * Fetches all approved markers for a specific map, plus any local pending markers submitted by the user.
- */
+export async function getAllApprovedMarkerStats() {
+  return prisma.marker.findMany({
+    where: { approved: true },
+    select: { mapName: true, type: true }
+  });
+}
+
+export async function getAllPendingMarkerStats(password: string) {
+  if (password !== EDITOR_PASSWORD) return [];
+  return prisma.marker.findMany({
+    where: { approved: false },
+    select: { mapName: true, id: true }
+  });
+}
+
 export async function getMarkers(mapName: string, localPendingIds: string[] = []) {
   return prisma.marker.findMany({ 
     where: { 
@@ -46,9 +60,6 @@ export async function getMarkers(mapName: string, localPendingIds: string[] = []
   });
 }
 
-/**
- * Fetches the queue of unapproved markers for admins.
- */
 export async function getPendingMarkers(password: string, mapName: string) {
   if (password !== EDITOR_PASSWORD) return { error: 'Unauthorized' };
   const markers = await prisma.marker.findMany({ 
@@ -58,9 +69,6 @@ export async function getPendingMarkers(password: string, mapName: string) {
   return { markers };
 }
 
-/**
- * Creates a new marker. Auto-approves if the editor password is provided.
- */
 export async function createMarker(data: any, password?: string) {
   try {
     const isEditor = password === EDITOR_PASSWORD;
@@ -78,9 +86,6 @@ export async function createMarker(data: any, password?: string) {
   }
 }
 
-/**
- * Updates an existing marker. If modified by a guest, it creates a new pending proposal instead of overwriting.
- */
 export async function updateMarker(id: string, data: any, password?: string) {
   try {
     const isEditor = password === EDITOR_PASSWORD;
@@ -108,9 +113,6 @@ export async function updateMarker(id: string, data: any, password?: string) {
   }
 }
 
-/**
- * Approves a pending marker. If it was an edit proposal, deletes the original marker it replaces.
- */
 export async function approveMarker(id: string, password: string) {
   if (password !== EDITOR_PASSWORD) return { success: false };
   const marker = await prisma.marker.findUnique({ where: { id } });
@@ -123,18 +125,12 @@ export async function approveMarker(id: string, password: string) {
   return { success: true };
 }
 
-/**
- * Deletes a marker permanently.
- */
 export async function deleteMarker(id: string, password: string) {
   if (password !== EDITOR_PASSWORD) return { success: false };
   await prisma.marker.delete({ where: { id } });
   return { success: true };
 }
 
-/**
- * Bulk imports legacy markers. Retains Base64 encoding to prevent Vercel Serverless Function timeouts during mass operations.
- */
 export async function importLegacyMarkers(markers: any[], password: string) {
   if (password !== EDITOR_PASSWORD) return { success: false, error: 'Unauthorized' };
   try {

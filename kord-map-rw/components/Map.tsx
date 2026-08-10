@@ -183,14 +183,15 @@ export default function Map({
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [isRelocating, setIsRelocating] = useState(false);
   
+  
   const [formData, setFormData] = useState({ title: '', description: '', type: '', imageUrl: '', submitter: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
-  
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
   useEffect(() => { if (mode === 'view') handleCloseModal(); }, [mode]);
 
@@ -210,6 +211,26 @@ export default function Map({
     return null;
   };
 
+  // Cooldown Tracker
+  useEffect(() => {
+    const checkCooldown = () => {
+      if (editorPassword) {
+        setCooldownRemaining(0);
+        return;
+      }
+      const lastSub = localStorage.getItem('kordLastSubmission');
+      if (lastSub) {
+        const diff = Math.ceil((parseInt(lastSub, 10) + 25000 - Date.now()) / 1000);
+        if (diff > 0) setCooldownRemaining(diff);
+        else setCooldownRemaining(0);
+      }
+    };
+    
+    checkCooldown();
+    const interval = setInterval(checkCooldown, 1000);
+    return () => clearInterval(interval);
+  }, [editorPassword]);
+
   const handleEditClick = (marker: any) => {
     setEditingMarkerId(marker.id);
     setPendingMarker({ lat: marker.lat, lng: marker.lng });
@@ -225,62 +246,92 @@ export default function Map({
 
   const handleSaveMarker = async () => {
     if (!pendingMarker || !currentFloorId || !formData.title.trim() || !formData.type) return;
-    setIsSubmitting(true);
-    
-    let finalImageUrl = formData.imageUrl;
 
-    // Upload to Vercel Blob if the image is a local Base64 string
-    if (finalImageUrl.startsWith('data:image')) {
-      setIsProcessingImage(true);
-      const uploadedUrl = await uploadImage(finalImageUrl);
-      if (uploadedUrl) {
-        finalImageUrl = uploadedUrl;
-      } else {
-        alert("Failed to upload image to Vercel Blob. Ensure Storage is configured.");
-        setIsSubmitting(false);
-        setIsProcessingImage(false);
+    // 1. Check Cooldown
+    if (!editorPassword) {
+      const lastSub = localStorage.getItem('kordLastSubmission');
+      if (lastSub && Date.now() - parseInt(lastSub, 10) < 25000) {
+        alert("Please wait a moment before submitting another marker.");
         return;
       }
-      setIsProcessingImage(false);
     }
 
-    const payload = {
-      title: formData.title, description: formData.description, type: formData.type, 
-      imageUrl: finalImageUrl, submitter: formData.submitter,
-      lat: pendingMarker.lat, lng: pendingMarker.lng, floorId: currentFloorId, mapName: mapName,
-    };
+    setIsSubmitting(true);
+    
+    try {
+      let finalImageUrl = formData.imageUrl;
 
-    let result: any;
-    if (editingMarkerId) {
-      result = await updateMarker(editingMarkerId, payload, editorPassword);
-      if (result.success && result.marker) {
-        if (result.autoApproved) {
+      // 2. Handle Image Upload
+      if (finalImageUrl.startsWith('data:image')) {
+        setIsProcessingImage(true);
+        const uploadedUrl = await uploadImage(finalImageUrl);
+        setIsProcessingImage(false); // Clear processing state
+        
+        if (uploadedUrl) {
+          finalImageUrl = uploadedUrl;
+        } else {
+          alert("Failed to upload image. Ensure Vercel Storage is configured.");
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // 3. Prepare Payload
+      const payload = {
+        title: formData.title, description: formData.description, type: formData.type, 
+        imageUrl: finalImageUrl, submitter: formData.submitter,
+        lat: pendingMarker.lat, lng: pendingMarker.lng, floorId: currentFloorId, mapName: mapName,
+      };
+
+      // 4. Send to Database
+      let result;
+      if (editingMarkerId) {
+        result = await updateMarker(editingMarkerId, payload, editorPassword);
+      } else {
+        result = await createMarker(payload, editorPassword);
+      }
+
+      // 5. Handle Success
+      if (result?.success && result.marker) {
+        
+        // Safely add to local pending list if it's a guest submission
+        if (!result.autoApproved && typeof addLocalPendingId === 'function') {
+          addLocalPendingId(result.marker.id);
+        }
+
+        // Update local map markers
+        if (editingMarkerId && result.autoApproved) {
           setMarkers((prev: any[]) => prev.map(m => m.id === editingMarkerId ? result.marker : m));
         } else {
-          addLocalPendingId(result.marker.id);
-          setMarkers((prev: any[]) => [result.marker, ...prev]); 
-        }
-      }
-    } else {
-      result = await createMarker(payload, editorPassword);
-      if (result.success && result.marker) {
-        if (result.autoApproved) {
-          setMarkers((prev: any[]) => [result.marker, ...prev]);
-        } else {
-          addLocalPendingId(result.marker.id);
           setMarkers((prev: any[]) => [result.marker, ...prev]);
         }
+
+        // Trigger cooldown for guests
+        if (!editorPassword) {
+          localStorage.setItem('kordLastSubmission', Date.now().toString());
+          setCooldownRemaining(60);
+        }
+        
+        // Trigger Success Animation
+        setSubmitSuccess(true);
+        setTimeout(() => { 
+          setSubmitSuccess(false); 
+          handleCloseModal(); 
+        }, 1000);
+        
+      } else {
+        alert("Error saving marker to database.");
       }
-    }
-    
-    setIsSubmitting(false);
-    if (result?.success) {
-      setSubmitSuccess(true);
-      setTimeout(() => { setSubmitSuccess(false); handleCloseModal(); }, 1000);
-    } else {
-      alert("Error saving marker.");
+      
+    } catch (err) {
+      console.error("Fatal error during save:", err);
+      alert("An unexpected error occurred.");
+    } finally {
+      // 🚀 FAILSAFE: Guarantee the button is unlocked no matter what happens!
+      setIsSubmitting(false);
     }
   };
+
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false);
@@ -303,23 +354,34 @@ export default function Map({
     }
   };
 
-  /**
+/**
    * Generates a custom Leaflet divIcon.
-   * If the marker belongs to a different floor, it applies a ghosting effect and directional arrow.
+   * Applies ghosting styles and an arrow indicator if the marker is on a different floor.
    */
   const getCustomIcon = (typeId: string, isGhost: boolean, direction: 'up' | 'down' | null) => {
     const scale = settings.iconScale || 1;
     const size = 32 * scale;
-    let ghostStyles = ''; let arrowHtml = '';
+    
+    let ghostStyles = ''; 
+    let arrowHtml = '';
+    
     if (isGhost) {
-      ghostStyles = `opacity: 0.3; filter: grayscale(0.5);`; 
+      ghostStyles = `opacity: 0.5; filter: grayscale(0.5);`; 
       const arrowColor = direction === 'up' ? '#22c55e' : '#ef4444';
       const arrowChar = direction === 'up' ? '▲' : '▼';
-      arrowHtml = `<div style="position: absolute; top: -${4 * scale}px; right: -${4 * scale}px; width: ${14 * scale}px; height: ${14 * scale}px; background: rgba(0,0,0,0.8); border-radius: 50%; border: 1px solid #444; color: ${arrowColor}; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: ${9 * scale}px; font-weight: bold; line-height: 1;">${arrowChar}</div>`;
+      arrowHtml = `<div style="position: absolute; top: -${4 * scale}px; right: -${4 * scale}px; width: ${14 * scale}px; height: ${14 * scale}px; background: rgba(0,0,0,0.5); border-radius: 50%; border: 1px solid #444; color: ${arrowColor}; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: ${9 * scale}px; font-weight: bold; line-height: 1;">${arrowChar}</div>`;
     }
+    
     return L.divIcon({
-      html: `<div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; ${ghostStyles}"><img src="/icons/${typeId}.png" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.5));" />${arrowHtml}</div>`,
-      className: 'bg-transparent border-none', iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -(size / 2)],
+      html: `<div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; ${ghostStyles}">
+               <img src="/icons/${typeId}.png" style="width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(1px 1px 0px white) drop-shadow(-1px 1px 0px white) drop-shadow(1px -1px 0px white) drop-shadow(-1px -1px 0px white) drop-shadow(0px 3px 6px rgba(0,0,0,0.6));" />
+               ${arrowHtml}
+             </div>`,
+      // Add the marker-type class for tracking, and the is-ghost class for dashed line rendering
+      className: `bg-transparent border-none marker-type-${typeId} ${isGhost ? 'is-ghost' : ''}`, 
+      iconSize: [size, size], 
+      iconAnchor: [size / 2, size / 2], 
+      popupAnchor: [0, -(size / 2)],
     });
   };
 
@@ -495,14 +557,18 @@ export default function Map({
               </div>
 
               <div className="flex gap-2 mt-5">
-                <button onClick={handleCloseModal} className="flex-1 bg-[#333] hover:bg-[#444] py-2 rounded text-sm transition-colors">Cancel</button>
-                <button 
-                  onClick={handleSaveMarker} disabled={isSubmitting || isProcessingImage || !formData.title.trim() || !formData.type}
-                  className="flex-1 bg-[#e68c3a] hover:bg-[#cf7d34] disabled:opacity-50 disabled:cursor-not-allowed py-2 rounded text-sm transition-colors font-medium shadow text-black"
-                >
-                  {isSubmitting ? 'Saving...' : (editorPassword ? 'Publish' : 'Submit')}
-                </button>
-              </div>
+              <button onClick={handleCloseModal} className="flex-1 bg-[#333] hover:bg-[#444] py-2 rounded text-sm transition-colors">Cancel</button>
+              <button 
+                onClick={handleSaveMarker} 
+                disabled={isSubmitting || isProcessingImage || !formData.title.trim() || !formData.type || cooldownRemaining > 0}
+                className="flex-1 bg-[#e68c3a] hover:bg-[#cf7d34] disabled:opacity-50 disabled:cursor-not-allowed py-2 rounded text-sm transition-colors font-medium shadow text-black"
+              >
+                {isSubmitting ? 'Saving...' : 
+                 isProcessingImage ? 'Compressing...' : 
+                 cooldownRemaining > 0 ? `Wait (${cooldownRemaining}s)` : 
+                 (editorPassword ? 'Publish' : 'Submit')}
+              </button>
+            </div>
             </>
           )}
         </div>

@@ -20,12 +20,15 @@ interface SidebarProps {
   markerTypes: Record<string, string[]>;
   activeFilters: string[];
   setActiveFilters: (filters: string[]) => void;
+  setHoveredFilter: (filter: string | null) => void;
+  hoveredFilter: string | null; // 🚀 ADDED
+  markers: any[];               // 🚀 ADDED
 }
 
 export default function Sidebar({ 
   mapName, onClearMap, mode, setMode, floors, currentFloorId, setCurrentFloorId, 
   openSettings, openLogin, openApprovals, openChangelog, onLogout, isLoggedIn,
-  markerTypes, activeFilters, setActiveFilters
+  markerTypes, activeFilters, setActiveFilters, setHoveredFilter, hoveredFilter, markers
 }: SidebarProps) {
 
   // Flatten documents.json into a single list of types
@@ -67,29 +70,52 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* Dynamic Filters with Icons */}
-      <div className="p-5 border-b border-[#333]">
-        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+      {/* 🚀 Dynamic Filters with Segmentation and Counters */}
+      <div className="p-4 border-b border-[#333]">
+        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
           <ListFilter size={14} /> Filters
         </h3>
-        <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+        <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
           {allTypes.map(type => {
             const typeId = type.toLowerCase().replace(/\s+/g, '-');
             const isActive = activeFilters.includes(typeId);
+            const isHovered = hoveredFilter === typeId;
+            const markerCount = markers.filter(m => m.type === typeId).length;
+
             return (
-              <label key={typeId} className="flex items-center gap-3 text-sm text-gray-300 cursor-pointer hover:text-white">
-                <input 
-                  type="checkbox" 
-                  checked={isActive} 
-                  onChange={() => toggleFilter(typeId)}
-                  className="w-4 h-4 rounded bg-[#2a2a2a] border-none focus:ring-0 accent-[#e68c3a]" 
-                />
-                <img src={`/icons/${typeId}.png`} className="w-4 h-4 object-contain" alt="icon" />
-                {type}
-              </label>
+              <div 
+                key={typeId} 
+                id={`filter-${typeId}`}
+                onMouseEnter={() => setHoveredFilter(typeId)}
+                onMouseLeave={() => setHoveredFilter(null)}
+                onClick={() => toggleFilter(typeId)}
+                className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all duration-150 ${
+                  isHovered ? 'bg-[#2a2a2a] border-r-2 border-red-500' : 'hover:bg-[#222] border-r-2 border-transparent'
+                } ${isActive ? 'opacity-100' : 'opacity-60'}`}
+              >
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="checkbox" 
+                    checked={isActive} 
+                    readOnly
+                    className="w-4 h-4 rounded bg-[#1a1a1a] border-none focus:ring-0 accent-[#e68c3a] pointer-events-none" 
+                  />
+                  <img src={`/icons/${typeId}.png`} className="w-7 h-7 object-contain filter drop-shadow-md" alt="icon" />
+                  <span className={`text-sm font-medium ${isActive ? 'text-gray-200' : 'text-gray-500'}`}>
+                    {type}
+                  </span>
+                </div>
+                
+                {/* 🚀 Dynamic Counter Badge */}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  isActive ? 'bg-[#333] text-gray-300' : 'bg-[#1a1a1a] text-gray-600'
+                }`}>
+                  {markerCount}
+                </span>
+              </div>
             )
           })}
-          {allTypes.length === 0 && <p className="text-xs text-gray-600">Loading filters...</p>}
+          {allTypes.length === 0 && <p className="text-xs text-gray-600 px-1">Loading filters...</p>}
         </div>
       </div>
 
@@ -137,20 +163,11 @@ export default function Sidebar({
           <Settings size={16} /> Settings
         </button>
 
-        {/* 🚀 UPDATED FOOTER CREDITS */}
         <div className="mt-3 pt-4 border-t border-[#333] text-[10px] text-gray-400 text-center flex flex-col gap-2">
-          <p>
-            You can contribute to this project on <a href="https://github.com/KalleLeskinen/KordMap" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">GitHub</a>
-          </p>
-          <p>
-            Locations provided by users on VeryBadScav&apos;s <a href="https://discord.com/invite/AmuWBRMnVQ" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Discord</a>
-          </p>
-          <p>
-            Maps by <a href="https://github.com/the-hideout/tarkov-dev-svg-maps" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Shebuka</a>
-          </p>
-          <p>
-            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">CC BY-NC-SA 4.0</a>
-          </p>
+          <p>You can contribute to this project on <a href="https://github.com/KalleLeskinen/KordMap" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">GitHub</a></p>
+          <p>Locations provided by users on VeryBadScav&apos;s <a href="https://discord.com/invite/AmuWBRMnVQ" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Discord</a></p>
+          <p>Maps by <a href="https://github.com/the-hideout/tarkov-dev-svg-maps" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Shebuka</a></p>
+          <p><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">CC BY-NC-SA 4.0</a></p>
         </div>
       </div>
     </div>
