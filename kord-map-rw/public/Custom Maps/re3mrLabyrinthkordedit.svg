@@ -3,110 +3,46 @@
   <!-- Generator: Adobe Illustrator 29.5.0, SVG Export Plug-In . SVG Version: 2.1.0 Build 137)  -->
   <defs>
     <style>
-      .st0 {
-        font-size: 30px;
-      }
-
       .st0, .st1 {
-        font-family: Axis, Axis;
-      }
-
-      .st0, .st1, .st2, .st3 {
-        fill: #fff;
-      }
-
-      .st4 {
-        opacity: .5;
-      }
-
-      .st4, .st5 {
-        display: none;
+        isolation: isolate;
       }
 
       .st1 {
-        font-size: 30px;
+        fill: #fff;
+        font-family: BebasNeue-Regular, 'Bebas Neue';
+        font-size: 48px;
       }
 
       .st2 {
-        font-family: Bender-Light, Bender;
-        font-size: 24px;
-        font-weight: 300;
-      }
-
-      .st3 {
-        font-family: BebasNeue-Regular, 'Bebas Neue';
-        font-size: 48px;
+        display: none;
       }
     </style>
   </defs>
   <g id="Ground_Floor">
-    <image id="Background__x2B__BaseLayer__x2B__re3mrupperfloor__x2B__CREDITS__x5B_DO_NOT_REMOVE_THIS_x2C__ADD_YOUR_OWN_NAME_TO_THE_TOP_AS_THE_CREATOR_OF_YOUR_OVERLAY_x2F_TRANSLATION_x5D___x2B__ONMAP_xA0_Image" width="4800" height="4320" xlink:href="re3mrLabyrinthkordedit-1.png"/>
+    <image id="Background__x2B__BaseLayer__x2B__re3mrupperfloor__x2B__CREDITS__x5B_DO_NOT_REMOVE_THIS_x2C__ADD_YOUR_OWN_NAME_TO_THE_TOP_AS_THE_CREATOR_OF_YOUR_OVERLAY_x2F_TRANSLATION_x5D___x2B__ONMAP_xA0_Image" class="st0" width="4800" height="4320" xlink:href="re3mrLabyrinthkordedit-1.png"/>
   </g>
   <g id="First_Floor">
-    <g id="RaidInfo" class="st5">
-      <g id="PMC_AMOUNT:_5">
-        <text class="st0" transform="translate(1553.564 104.599)"><tspan x="0" y="0">PMC AMOUNT: 5</tspan></text>
-      </g>
-      <g id="GENERAL_RAID_INFORMATION:">
-        <text class="st0" transform="translate(1553.564 62.599)"><tspan x="0" y="0">GENERAL RAID INFORMATION:</tspan></text>
-      </g>
-      <g id="DURATION:_40_MIN.">
-        <text class="st0" transform="translate(1553.564 148.401)"><tspan x="0" y="0">DURATION: 40 MIN.</tspan></text>
-      </g>
-      <g id="BOSS:_VENGEFUL_KILLA_x2C__SHADOW_OF_TAGILLA">
-        <text id="BOSS:_VENGEFUL_KILLA_x2C__SHADOW_OF_TAGILLA1" data-name="BOSS:_VENGEFUL_KILLA_x2C__SHADOW_OF_TAGILLA" class="st0" transform="translate(1554.564 191.944)"><tspan x="0" y="0">BOSS: VENGEFUL KILLA, SHADOW OF TAGILLA</tspan></text>
-      </g>
-      <g id="SIZE:_118x110_m">
-        <text class="st0" transform="translate(1555.564 233.111)"><tspan x="0" y="0">SIZE: 118x110 m</tspan></text>
-      </g>
-    </g>
-    <g id="Notes" class="st5">
-      <g id="_NEAR_THE_CENTER_OF_THE_LOCATION.">
-        <text id="_NEAR_THE_CENTER_OF_THE_LOCATION.1" data-name="_NEAR_THE_CENTER_OF_THE_LOCATION." class="st1" transform="translate(2333.496 147.455)"><tspan x="0" y="0" xml:space="preserve">	NEAR THE CENTER OF THE LOCATION.</tspan></text>
-      </g>
-      <g id="BRING_AN_ANTIDOTE_SUCH_AS_XTG-12_OR">
-        <text id="BRING_AN_ANTIDOTE_SUCH_AS_XTG-12_OR1" data-name="BRING_AN_ANTIDOTE_SUCH_AS_XTG-12_OR" class="st1" transform="translate(2335.496 192.455)"><tspan x="0" y="0">BRING AN ANTIDOTE SUCH AS XTG-12 OR</tspan></text>
-      </g>
-      <g id="NO_INSURANCE_RETURNS">
-        <text class="st1" transform="translate(2335.496 274.455)"><tspan x="0" y="0">NO INSURANCE RETURNS</tspan></text>
-      </g>
-      <g id="_PERFOTORAN_TO_CURE_POTENTIAL_POISONING.">
-        <text id="_PERFOTORAN_TO_CURE_POTENTIAL_POISONING.1" data-name="_PERFOTORAN_TO_CURE_POTENTIAL_POISONING." class="st1" transform="translate(2335.17 232.444)"><tspan x="0" y="0" xml:space="preserve">	PERFOTORAN TO CURE POTENTIAL POISONING.</tspan></text>
-      </g>
-      <g id="THE_ALARM_SOUNDS_WHEN_A_PLAYER_IS_SEEN">
-        <text id="THE_ALARM_SOUNDS_WHEN_A_PLAYER_IS_SEEN1" data-name="THE_ALARM_SOUNDS_WHEN_A_PLAYER_IS_SEEN" class="st1" transform="translate(2335.826 104.878)"><tspan x="0" y="0">THE ALARM SOUNDS WHEN A PLAYER IS SEEN</tspan></text>
-      </g>
-      <g id="NOTES:">
-        <text class="st1" transform="translate(2320.694 62.802)"><tspan x="0" y="0">NOTES:</tspan></text>
-      </g>
-    </g>
     <g id="Title">
       <g id="_x30_.6C">
-        <text class="st3" transform="translate(1423.729 82.732)"><tspan x="0" y="0">0.6C</tspan></text>
+        <g class="st0">
+          <text class="st1" transform="translate(1423.729 82.732)"><tspan x="0" y="0">0.6C</tspan></text>
+        </g>
       </g>
       <g id="MAP_MADE_BY_RE3MR.COM_WITH_HELP_FROM_THE_EFT_WIKI_xA0_Image">
-        <image id="MAP_MADE_BY_RE3MR.COM_WITH_HELP_FROM_THE_EFT_WIKI_xA0_Image1" data-name="MAP_MADE_BY_RE3MR.COM_WITH_HELP_FROM_THE_EFT_WIKI_xA0_Image" width="1344" height="23" transform="translate(33 256)" xlink:href="re3mrLabyrinthkordedit-2.png"/>
+        <image id="MAP_MADE_BY_RE3MR.COM_WITH_HELP_FROM_THE_EFT_WIKI_xA0_Image1" class="st0" width="1344" height="23" transform="translate(33 256)" xlink:href="re3mrLabyrinthkordedit-2.png"/>
       </g>
       <g id="LABYRINTH_xA0_Image">
-        <image id="LABYRINTH_xA0_Image1" data-name="LABYRINTH_xA0_Image" width="1344" height="192" transform="translate(33 43)" xlink:href="re3mrLabyrinthkordedit-3.png"/>
+        <image id="LABYRINTH_xA0_Image1" class="st0" width="1344" height="192" transform="translate(33 43)" xlink:href="re3mrLabyrinthkordedit-3.png"/>
       </g>
-      <g id="Image_xA0_628_xA0_Image" class="st5">
-        <image id="Image_xA0_628_xA0_Image1" data-name="Image_xA0_628_xA0_Image" width="4800" height="4320" xlink:href="re3mrLabyrinthkordedit-4.png"/>
+      <g id="Image_xA0_628_xA0_Image" class="st2">
+        <image id="Image_xA0_628_xA0_Image1" class="st0" width="4800" height="4320" xlink:href="re3mrLabyrinthkordedit-4.png"/>
       </g>
-    </g>
-    <g id="Compass" class="st5">
-      <g id="Compass_xA0_Image">
-        <image id="Compass_xA0_Image1" data-name="Compass_xA0_Image" width="140" height="143" transform="translate(4578 93)" xlink:href="re3mrLabyrinthkordedit-5.png"/>
-      </g>
-    </g>
-    <g id="A_facility_of_one_of_TerraGroup_x27_s_contractors_x2C__Knossos_LLC._Acc" class="st4">
-      <text id="A_facility_of_one_of_TerraGroup_x27_s_contractors_x2C__Knossos_LLC._Acc1" data-name="A_facility_of_one_of_TerraGroup_x27_s_contractors_x2C__Knossos_LLC._Acc" class="st2" transform="translate(33.119 28.686)"><tspan x="0" y="0">A FACILITY OF ONE OF TERRAGROUP&apos;S CONTRACTORS, KNOSSOS LLC. ACCORDING TO PUBLIC SOURCES, THEY BUILD AMUSEMENT AND THEME PARKS. HOWEVER, THIS PLACE LOOKS MORE LIKE A HEAVILY FORTIFIED BUNKER THAN A NEW THEME PARK.</tspan></text>
     </g>
   </g>
   <metadata>
     <sfw xmlns="http://ns.adobe.com/SaveForWeb/1.0/">
       <slices/>
-      <sliceSourceBounds x="-1440" y="-1620" width="4800" height="4320" bottomLeftOrigin="true"/>
+      <sliceSourceBounds x="0" y="0" width="4800" height="4320" bottomLeftOrigin="true"/>
     </sfw>
   </metadata>
 </svg>
