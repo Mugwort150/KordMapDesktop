@@ -46,16 +46,12 @@ export default function Sidebar({
 
   useEffect(() => {
     const handleResize = () => {
-      // Toggle compact mode if the browser window is short
       setIsCompact(window.innerHeight <= 850);
-      
-      // Measure if the map name is physically wider than its container
       if (textRef.current && containerRef.current) {
         setIsOverflowing(textRef.current.scrollWidth > containerRef.current.clientWidth);
       }
     };
     
-    // Run on mount and window resize
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -72,7 +68,6 @@ export default function Sidebar({
   return (
     <div id="kord-sidebar" className="w-72 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-[1000] relative">
       
-      {/* 🚀 DYNAMIC HEADER: Wraps normally, but truncates & scrolls-on-hover in compact mode */}
       <div 
         className="p-5 [@media(max-height:850px)]:p-4 border-b border-[#333] flex flex-col [@media(max-height:850px)]:flex-row items-center justify-between gap-3 overflow-hidden"
         onMouseEnter={() => setIsHoveredHeader(true)}
@@ -137,7 +132,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* 🚀 COLLAPSIBLE FILTERS: Acts as an accordion in compact mode */}
       <div className="p-4 [@media(max-height:850px)]:p-3 border-b border-[#333] shrink-0">
         <button 
           onClick={() => { if (isCompact) setIsFiltersExpanded(!isFiltersExpanded); }}
@@ -185,7 +179,6 @@ export default function Sidebar({
                     {type}
                   </span>
                 </div>
-                
                 <span className={`text-[10px] [@media(max-height:700px)]:text-[9px] font-bold px-2 py-0.5 rounded-full ${
                   isActive ? 'bg-[#333] text-gray-300' : 'bg-[#1a1a1a] text-gray-600'
                 }`}>
@@ -198,28 +191,34 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="p-5 [@media(max-height:850px)]:p-4 flex-1 overflow-y-auto min-h-[100px]">
-        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 [@media(max-height:850px)]:mb-2 flex items-center gap-2">
-          <Layers size={14} /> Floors
-        </h3>
-        <div className="flex flex-col-reverse gap-2 [@media(max-height:850px)]:gap-1.5">
-          {floors.map((floor) => (
-            <button
-              key={floor.id}
-              onClick={() => setCurrentFloorId(floor.id)}
-              className={`text-left px-4 py-3 [@media(max-height:850px)]:py-2 rounded text-sm transition-colors border ${
-                currentFloorId === floor.id 
-                  ? 'bg-[#e68c3a]/20 border-[#e68c3a] text-[#e68c3a] font-bold' 
-                  : 'bg-[#2a2a2a] border-transparent text-gray-400 hover:bg-[#333] hover:text-white'
-              }`}
-            >
-              {floor.name}
-            </button>
-          ))}
+      {/* 🚀 CONDITIONAL FLOORS SECTION: Only renders if the map has 2 or more layers! */}
+      {floors.length > 1 ? (
+        <div className="p-5 [@media(max-height:850px)]:p-4 flex-1 overflow-y-auto min-h-[100px]">
+          <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 [@media(max-height:850px)]:mb-2 flex items-center gap-2">
+            <Layers size={14} /> Floors
+          </h3>
+          <div className="flex flex-col-reverse gap-2 [@media(max-height:850px)]:gap-1.5">
+            {floors.map((floor) => (
+              <button
+                key={floor.id}
+                onClick={() => setCurrentFloorId(floor.id)}
+                className={`text-left px-4 py-3 [@media(max-height:850px)]:py-2 rounded text-sm transition-colors border ${
+                  currentFloorId === floor.id 
+                    ? 'bg-[#e68c3a]/20 border-[#e68c3a] text-[#e68c3a] font-bold' 
+                    : 'bg-[#2a2a2a] border-transparent text-gray-400 hover:bg-[#333] hover:text-white'
+                }`}
+              >
+                {floor.name}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        // 🚀 Empty spacer to ensure the footer stays pushed to the bottom
+        <div className="flex-1" />
+      )}
 
-      <div className="p-4 [@media(max-height:850px)]:p-3 border-t border-[#333] flex flex-col gap-2 shrink-0">
+      <div className="p-4 [@media(max-height:850px)]:p-3 border-t border-[#333] flex flex-col gap-2 [@media(max-height:850px)]:gap-1.5 shrink-0">
         {isLoggedIn ? (
           <div className="flex flex-col gap-2 [@media(max-height:850px)]:grid [@media(max-height:850px)]:grid-cols-2 [@media(max-height:850px)]:gap-1.5">
             <div className="flex gap-2 [@media(max-height:850px)]:contents">
@@ -260,17 +259,12 @@ export default function Sidebar({
           </div>
         )}
 
-        {/* 🚀 FOOTER CREDITS WITH AUTO-VERSIONING */}
         <div className="mt-3 [@media(max-height:850px)]:mt-1.5 pt-4 [@media(max-height:850px)]:pt-2 border-t border-[#333] text-[10px] [@media(max-height:850px)]:text-[9px] [@media(max-height:700px)]:text-[8px] text-gray-400 text-center flex flex-col gap-2 [@media(max-height:850px)]:gap-1 [@media(max-height:700px)]:gap-0.5 [@media(max-height:700px)]:leading-tight">
           <p>You can contribute to this project on <a href="https://github.com/KalleLeskinen/KordMap" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">GitHub</a></p>
           <p>Locations provided by users on VeryBadScav&apos;s <a href="https://discord.com/invite/AmuWBRMnVQ" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Discord</a></p>
           <p>Maps by <a href="https://github.com/the-hideout/tarkov-dev-svg-maps" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Shebuka</a></p>
           <p><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">CC BY-NC-SA 4.0</a></p>
-          
-          {/* 🚀 Auto-updating version tag (shows 'dev' locally) */}
-          <p className="mt-1 text-[#666] font-mono">
-            v{process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev'}
-          </p>
+          <p className="mt-1 text-[#666] font-mono">v{process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || 'dev'}</p>
         </div>
       </div>
     </div>
