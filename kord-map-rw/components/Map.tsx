@@ -8,6 +8,9 @@ import { MapSettings, Floor } from '@/app/page';
 import { createMarker, updateMarker, deleteMarker, uploadImage, suggestDeleteMarker } from '@/app/actions/markers'; // 🚀 Added 
 import { Plus, Minus, Sun } from 'lucide-react';
 
+import { compressImage } from '@/lib/utils';
+import Lightbox from '@/components/modals/Lightbox';
+
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -17,52 +20,6 @@ L.Icon.Default.mergeOptions({
 
 const NATIVE_SIZE = 8192;
 const bounds: L.LatLngBoundsExpression = [[-NATIVE_SIZE, 0], [0, NATIVE_SIZE]];
-
-/**
- * Compresses and resizes an uploaded image to WebP format.
- * Ensures the output string stays under the 1MB Server Action payload limit.
- */
-const compressImage = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        
-        const MAX_WIDTH = width > height ? 1920 : 1080;
-        const MAX_HEIGHT = width > height ? 1080 : 1920;
-        
-        if (width > MAX_WIDTH) { 
-          height = Math.round((height * MAX_WIDTH) / width); 
-          width = MAX_WIDTH; 
-        }
-        if (height > MAX_HEIGHT) { 
-          width = Math.round((width * MAX_HEIGHT) / height); 
-          height = MAX_HEIGHT; 
-        }
-        
-        canvas.width = width; 
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        
-        let quality = 0.9;
-        let dataUrl = canvas.toDataURL('image/webp', quality);
-        
-        while (dataUrl.length > 1000000 && quality > 0.1) {
-          quality -= 0.1;
-          dataUrl = canvas.toDataURL('image/webp', quality);
-        }
-        resolve(dataUrl);
-      };
-      img.onerror = (error) => reject(error);
-    };
-  });
-};
 
 /**
  * Renders an image inside the marker popup with a loading skeleton.
@@ -96,33 +53,6 @@ function PopupImage({ src, onClick }: { src: string; onClick: () => void }) {
   );
 }
 
-/**
- * Renders an enlarged image overlay with a loading spinner.
- */
-function LightboxImage({ src, onClose }: { src: string; onClose: () => void }) {
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  return (
-    <div className="fixed inset-0 z-[4000] bg-black/90 flex items-center justify-center p-8 cursor-zoom-out backdrop-blur-sm" onClick={onClose}>
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <svg className="w-10 h-10 text-white animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-      )}
-      <img 
-        src={src} 
-        onLoad={() => setIsLoaded(true)}
-        className={`max-w-full max-h-full object-contain rounded shadow-2xl transition-all duration-300 ${
-          isLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-        }`} 
-        alt="Enlarged Location" 
-      />
-    </div>
-  );
-}
 
 interface SvgOverlayProps {
   url: string;
@@ -771,7 +701,9 @@ export default function Map({
         </div>
       )}
 
-      {enlargedImage && <LightboxImage src={enlargedImage} onClose={() => setEnlargedImage(null)} />}
+      {enlargedImage && (
+        <Lightbox src={enlargedImage} onClose={() => setEnlargedImage(null)} />
+      )}
     </div>
   );
 }

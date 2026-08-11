@@ -7,6 +7,9 @@ import SettingsModal from '@/components/SettingsModal';
 import { getMarkers, getPendingMarkers, approveMarker, deleteMarker, getAllApprovedMarkerStats, getAllPendingMarkerStats, verifyEditorPassword } from '@/app/actions/markers';
 import { Map, ListFilter } from 'lucide-react';
 
+import { formatDate } from '@/lib/utils';
+import Lightbox from '@/components/modals/Lightbox';
+
 const MapWrapper = dynamic(() => import('@/components/MapWrapper'), { ssr: false });
 const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
 
@@ -220,10 +223,6 @@ export default function Home() {
     });
   }, []);
 
-  const formatDate = (dateStr: string, showTime: boolean) => {
-    const d = new Date(dateStr);
-    return showTime ? d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : d.toLocaleDateString();
-  };
 
   const changelog = [
     ...markers.filter(m => m.approved).map(m => ({ ...m, status: 'approved' })),
@@ -483,9 +482,7 @@ export default function Home() {
       )}
 
       {enlargedImage && (
-        <div className="fixed inset-0 z-[4000] bg-black/90 flex items-center justify-center p-8 cursor-zoom-out backdrop-blur-sm" onClick={() => setEnlargedImage(null)}>
-          <img src={enlargedImage} className="max-w-full max-h-full object-contain rounded shadow-2xl" alt="Enlarged Location" />
-        </div>
+        <Lightbox src={enlargedImage} onClose={() => setEnlargedImage(null)} />
       )}
     </main>
   );
