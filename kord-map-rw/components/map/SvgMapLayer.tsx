@@ -70,7 +70,9 @@ export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId,
         svgLayer = L.svgOverlay(svgElement, bounds, { interactive: false });
         svgLayer.addTo(map);
 
-        const uiFloors = extractedFloors.filter(f => f.name.toLowerCase().trim() !== 'ground level');
+        const uiFloors = extractedFloors.length > 1
+          ? extractedFloors.filter(f => f.name.toLowerCase().trim() !== 'ground level')
+          : extractedFloors;
         onFloorsLoaded(uiFloors);
       });
       

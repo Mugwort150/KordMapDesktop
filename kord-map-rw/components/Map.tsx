@@ -255,6 +255,13 @@ export default function Map({
   useEffect(() => { if (mode === 'view') handleCloseModal(); }, [mode]);
 
   useEffect(() => {
+    if (!allFloors.length || currentFloorId) return;
+    const firstFloor = allFloors.find(f => f.name.toLowerCase().includes('first floor'));
+    const firstFloorId = firstFloor ? firstFloor.id : allFloors[0].id;
+    setCurrentFloorId(firstFloorId);
+  }, [allFloors, currentFloorId, setCurrentFloorId]);
+
+  useEffect(() => {
     const checkCooldown = () => {
       if (editorPassword) { setCooldownRemaining(0); return; }
       const lastSub = localStorage.getItem('kordLastSubmission');
