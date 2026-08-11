@@ -66,12 +66,15 @@ function ConnectionLinesOverlay({ hoveredFilter }: { hoveredFilter: string | nul
 }
 
 export default function Home() {
-  const [mapsData, setMapsData] = useState<Record<string, { map_url: string; cover_url?: string }>>({});
+  // 🚀 Added map_name to the Type Definition
+  const [mapsData, setMapsData] = useState<Record<string, { map_url: string; cover_url?: string; map_name?: string }>>({});
   const [globalDocTypes, setGlobalDocTypes] = useState<Record<string, any>>({});
   const [globalStats, setGlobalStats] = useState<{ mapName: string, type: string }[]>([]);
   const [globalPendingStats, setGlobalPendingStats] = useState<{ mapName: string, id: string }[]>([]);
   const [titleFilters, setTitleFilters] = useState<string[]>([]);
-  const [selectedMap, setSelectedMap] = useState<{ name: string; url: string } | null>(null);
+  
+  // 🚀 Split selection into Internal ID and Display Name
+  const [selectedMap, setSelectedMap] = useState<{ id: string; displayName: string; url: string } | null>(null);
 
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -145,7 +148,8 @@ export default function Home() {
       const savedPending = JSON.parse(localStorage.getItem('kordPendingMarkers') || '[]');
       setLocalPendingIds(savedPending);
 
-      getMarkers(selectedMap.name, savedPending).then((fetchedMarkers) => {
+      // 🚀 Uses selectedMap.id to query the DB internally
+      getMarkers(selectedMap.id, savedPending).then((fetchedMarkers) => {
         const stillPending = savedPending.filter((id: string) => {
           const m = fetchedMarkers.find((x: any) => x.id === id);
           return m && !m.approved;
@@ -157,9 +161,10 @@ export default function Home() {
         setMarkers(fetchedMarkers);
       });
       
-      if (globalDocTypes[selectedMap.name]) {
-        setMarkerTypes(globalDocTypes[selectedMap.name]);
-        setActiveFilters(Object.values(globalDocTypes[selectedMap.name]).flat().map((t: any) => t.toLowerCase().replace(/\s+/g, '-')));
+      // 🚀 Uses selectedMap.id to check documents.json
+      if (globalDocTypes[selectedMap.id]) {
+        setMarkerTypes(globalDocTypes[selectedMap.id]);
+        setActiveFilters(Object.values(globalDocTypes[selectedMap.id]).flat().map((t: any) => t.toLowerCase().replace(/\s+/g, '-')));
       }
     } else {
       setTitleFilters([]);
@@ -204,7 +209,8 @@ export default function Home() {
 
   const loadApprovals = async () => {
     if (!selectedMap) return;
-    const res = await getPendingMarkers(editorPassword, selectedMap.name);
+    // 🚀 Uses internal ID for Auth Checks
+    const res = await getPendingMarkers(editorPassword, selectedMap.id);
     if (res.markers) { setPendingQueue(res.markers); setIsApprovalsOpen(true); } 
     else { alert("Invalid Editor Password"); handleLogout(); }
   };
@@ -305,22 +311,30 @@ export default function Home() {
         <div className="flex-1 flex flex-col relative h-full overflow-y-auto bg-[#0a0a0a]">
           <div className="p-6 md:p-10 flex flex-col items-center min-h-full w-full">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-6xl w-full my-auto pt-10 pb-16">
-              {Object.entries(mapsData).map(([name, data]) => {
-                const mapStats = globalStats.filter(m => m.mapName === name);
-                const pendingCount = globalPendingStats.filter(m => m.mapName === name).length;
+              
+              {/* 🚀 Changed `name` to `id` to signify the internal DB key vs the display name */}
+              {Object.entries(mapsData).map(([id, data]) => {
+                const mapStats = globalStats.filter(m => m.mapName === id);
+                const pendingCount = globalPendingStats.filter(m => m.mapName === id).length;
                 const mapTypeCounts = mapStats.reduce((acc, curr) => { acc[curr.type] = (acc[curr.type] || 0) + 1; return acc; }, {} as Record<string, number>);
                 const hasRequiredFilters = titleFilters.length === 0 || titleFilters.every(f => mapTypeCounts[f] > 0);
 
+                // 🚀 Fallback: If map_name isn't provided in maps.json, use the internal key as display name
+                const displayName = data.map_name || id;
+
                 return (
-                  <div key={name} className="flex flex-col items-center w-full">
-                    <button onClick={() => setSelectedMap({ name, url: data.map_url })} className={`relative overflow-hidden group rounded-xl border-2 transition-all duration-500 flex flex-col items-center justify-center min-h-[250px] w-full ${hasRequiredFilters ? 'border-[#333] hover:border-[#e68c3a] hover:scale-105 shadow-2xl opacity-100' : 'border-[#222] opacity-30 grayscale scale-95 pointer-events-none'}`}>
+                  <div key={id} className="flex flex-col items-center w-full">
+                    <button 
+                      onClick={() => setSelectedMap({ id, displayName, url: data.map_url })} 
+                      className={`relative overflow-hidden group rounded-xl border-2 transition-all duration-500 flex flex-col items-center justify-center min-h-[250px] w-full ${hasRequiredFilters ? 'border-[#333] hover:border-[#e68c3a] hover:scale-105 shadow-2xl opacity-100' : 'border-[#222] opacity-30 grayscale scale-95 pointer-events-none'}`}
+                    >
                       {data.cover_url ? <div className="absolute inset-0 bg-cover bg-center blur-[8px] group-hover:blur-[2px] transition-all duration-700 scale-110 group-hover:scale-100" style={{ backgroundImage: `url(${data.cover_url})` }} /> : <div className="absolute inset-0 bg-[#1a1a1a]" />}
                       <div className="absolute inset-0 bg-black/70 group-hover:bg-black/50 transition-all duration-500" />
                       
                       <div className="relative z-10 flex flex-col items-center gap-3 sm:gap-4 w-full px-2 sm:px-4">
-                        {/* 🚀 DYNAMIC TEXT SCALING: Scales down gracefully when browser is zoomed in! */}
+                        {/* 🚀 Render the Display Name */}
                         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold uppercase tracking-wider text-white group-hover:text-[#e68c3a] transition-colors drop-shadow-lg text-center w-full break-words leading-tight px-1">
-                          {name}
+                          {displayName}
                         </h2>
                         
                         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-bold text-gray-300 bg-black/60 px-3 py-2 sm:px-4 sm:py-3 rounded-lg border border-[#444] backdrop-blur-sm w-full max-w-[95%]">
@@ -359,7 +373,9 @@ export default function Home() {
     <main className="flex h-[100dvh] w-full bg-[#121212] overflow-hidden text-white relative">
       <ConnectionLinesOverlay hoveredFilter={hoveredFilter} />
       <Sidebar 
-        mapName={selectedMap.name} onClearMap={() => setSelectedMap(null)}
+        // 🚀 Sidebar receives the Display Name 
+        mapName={selectedMap.displayName} 
+        onClearMap={() => setSelectedMap(null)}
         mode={mode} setMode={setMode} floors={floors} currentFloorId={currentFloorId} setCurrentFloorId={setCurrentFloorId}
         openSettings={() => setIsSettingsOpen(true)} openLogin={() => setIsLoginOpen(true)} 
         openApprovals={loadApprovals} openChangelog={() => setIsChangelogOpen(true)}
@@ -369,7 +385,9 @@ export default function Home() {
       />
       <div className="flex-1 relative">
         <MapWrapper 
-          mapName={selectedMap.name} mapUrl={selectedMap.url}
+          // 🚀 MapWrapper receives the internal ID so it can save to the Database properly!
+          mapName={selectedMap.id} 
+          mapUrl={selectedMap.url}
           mode={mode} settings={settings} currentFloorId={currentFloorId} setCurrentFloorId={setCurrentFloorId}
           onFloorsLoaded={handleFloorsLoaded} editorPassword={editorPassword}
           markers={markers} setMarkers={setMarkers} markerTypes={markerTypes} activeFilters={activeFilters}
@@ -377,7 +395,8 @@ export default function Home() {
         />
       </div>
 
-      {isSettingsOpen && <SettingsModal mapName={selectedMap.name} settings={settings} saveSettings={saveSettings} close={() => setIsSettingsOpen(false)} editorPassword={editorPassword} />}
+      {/* 🚀 SettingsModal uses Internal ID for legacy import tool mapping */}
+      {isSettingsOpen && <SettingsModal mapName={selectedMap.id} settings={settings} saveSettings={saveSettings} close={() => setIsSettingsOpen(false)} editorPassword={editorPassword} />}
       {isLoginOpen && <LoginModal />}
 
       {isChangelogOpen && (
@@ -439,7 +458,7 @@ export default function Home() {
                         <button onClick={async () => {
                           await approveMarker(m.id, editorPassword);
                           setPendingQueue(q => q.filter(x => x.id !== m.id));
-                          getMarkers(selectedMap.name).then(setMarkers); 
+                          getMarkers(selectedMap.id).then(setMarkers); 
                         }} className="bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded text-xs font-bold text-white transition-colors">Approve</button>
                         <button onClick={async () => {
                           await deleteMarker(m.id, editorPassword);
