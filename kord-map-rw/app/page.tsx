@@ -4,66 +4,20 @@ import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import SettingsModal from '@/components/SettingsModal';
-import { getMarkers, getPendingMarkers, approveMarker, deleteMarker, getAllApprovedMarkerStats, getAllPendingMarkerStats, verifyEditorPassword } from '@/app/actions/markers';
-import { Map, ListFilter } from 'lucide-react';
+import ConnectionLinesOverlay from '@/components/ConnectionLines';
+import TitleScreen from '@/components/TitleScreen';
+import LoginModal from '@/components/modals/LoginModal';
+import ChangelogModal from '@/components/modals/ChangelogModal';
+import ApprovalsModal from '@/components/modals/ApprovalsModal';
+import Lightbox from '@/components/modals/Lightbox';
+
+import { getMarkers, getPendingMarkers, getAllApprovedMarkerStats, getAllPendingMarkerStats, verifyEditorPassword } from '@/app/actions/markers';
 
 const MapWrapper = dynamic(() => import('@/components/MapWrapper'), { ssr: false });
 const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
 
 export type MapSettings = { zoomStep: number; hardwareAcceleration: boolean; iconScale: number; };
 export type Floor = { id: string; name: string; };
-
-function ConnectionLinesOverlay({ hoveredFilter }: { hoveredFilter: string | null }) {
-  const [lines, setLines] = useState<{x1: number, y1: number, x2: number, y2: number, isGhost: boolean}[]>([]);
-
-  useEffect(() => {
-    if (!hoveredFilter) { setLines([]); return; }
-    let animationFrameId: number;
-    
-    const updateLines = () => {
-      const filterEl = document.getElementById(`filter-${hoveredFilter}`);
-      const sidebarEl = document.getElementById('kord-sidebar');
-      if (!filterEl || !sidebarEl) return;
-
-      const sidebarRect = sidebarEl.getBoundingClientRect();
-      const filterIconEl = filterEl.querySelector('img');
-      const startRect = (filterIconEl || filterEl).getBoundingClientRect();
-      
-      const startX = sidebarRect.right;
-      const startY = startRect.top + startRect.height / 2;
-
-      const markerEls = document.querySelectorAll(`.marker-type-${hoveredFilter}`);
-      const newLines = Array.from(markerEls).map(el => {
-        const rect = el.getBoundingClientRect();
-        return {
-          x1: startX, y1: startY, x2: rect.left + rect.width / 2, y2: rect.top + rect.height / 2,
-          isGhost: el.classList.contains('is-ghost')
-        };
-      });
-      setLines(newLines);
-      animationFrameId = requestAnimationFrame(updateLines);
-    };
-    updateLines();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [hoveredFilter]);
-
-  if (!hoveredFilter || lines.length === 0) return null;
-
-  return (
-    <svg className="fixed inset-0 w-full h-full pointer-events-none z-[1500]">
-      {lines.map((line, i) => {
-        const elbowX = line.x1 + 22; 
-        return (
-          <path 
-            key={i} d={`M ${line.x1} ${line.y1} L ${elbowX} ${line.y1} L ${line.x2} ${line.y2}`} 
-            fill="none" stroke="#ef4444" strokeWidth={line.isGhost ? "1.5" : "2"} 
-            strokeOpacity={line.isGhost ? "0.25" : "0.9"} strokeDasharray={line.isGhost ? "6,6" : "none"} strokeLinejoin="round" 
-          />
-        );
-      })}
-    </svg>
-  );
-}
 
 export default function Home() {
   // 🚀 Added map_name to the Type Definition
@@ -91,6 +45,7 @@ export default function Home() {
   const [markers, setMarkers] = useState<any[]>([]);
   const [pendingQueue, setPendingQueue] = useState<any[]>([]);
   const [localPendingIds, setLocalPendingIds] = useState<string[]>([]);
+  
   const [markerTypes, setMarkerTypes] = useState<Record<string, string[]>>({});
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [flyToMarker, setFlyToMarker] = useState<any | null>(null);
@@ -226,50 +181,12 @@ export default function Home() {
     });
   }, []);
 
-  const formatDate = (dateStr: string, showTime: boolean) => {
-    const d = new Date(dateStr);
-    return showTime ? d.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : d.toLocaleDateString();
-  };
-
   const changelog = [
     ...markers.filter(m => m.approved).map(m => ({ ...m, status: 'approved' })),
-    ...(editorPassword ? pendingQueue.map(m => ({ ...m, status: m.originalId ? 'pending-edit' : 'pending-new' })) : [])
+    ...(editorPassword ? pendingQueue.map(m => ({ ...m, status: m.isDeletion ? 'pending-delete' : m.originalId ? 'pending-edit' : 'pending-new' })) : [])
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const LoginModal = () => (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center">
-      <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-lg w-80 shadow-2xl">
-        <h2 className="font-bold mb-4">Editor Login</h2>
-        <input 
-          type="password" placeholder="Password..." value={editorPassword}
-          disabled={!!lockoutTime || isVerifying}
-          className="w-full bg-[#2a2a2a] p-2 rounded border border-[#444] mb-4 outline-none focus:border-[#e68c3a] disabled:opacity-50"
-          onChange={(e) => setEditorPassword(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleLoginSubmit(); }}
-        />
-        <div className="flex gap-2">
-          <button onClick={() => { setIsLoginOpen(false); setEditorPassword(''); }} className="flex-1 bg-[#333] p-2 rounded text-sm hover:bg-[#444]">Cancel</button>
-          <button 
-            onClick={handleLoginSubmit} 
-            disabled={!!lockoutTime || isVerifying}
-            className="flex-1 bg-[#e68c3a] text-black font-bold p-2 rounded text-sm hover:bg-[#cf7d34] disabled:opacity-50 disabled:bg-gray-600 transition-colors"
-          >
-            {isVerifying ? 'Checking...' : lockoutTime ? `Locked (${lockoutRemaining}s)` : 'Login'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   if (!selectedMap) {
-    let allTypesRaw: string[] = [];
-    Object.values(globalDocTypes).forEach((mapObj: any) => {
-      Object.values(mapObj).forEach((types: any) => allTypesRaw.push(...types));
-    });
-    const uniqueTypes = Array.from(new Set(allTypesRaw)).map(t => ({
-      id: t.toLowerCase().replace(/\s+/g, '-'), name: t
-    }));
-
     return (
       <main className="flex h-[100dvh] w-full bg-[#121212] overflow-hidden text-white relative">
         <div id="kord-sidebar" className="w-80 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-10 shrink-0">
@@ -399,33 +316,7 @@ export default function Home() {
       {isSettingsOpen && <SettingsModal mapName={selectedMap.id} settings={settings} saveSettings={saveSettings} close={() => setIsSettingsOpen(false)} editorPassword={editorPassword} />}
       {isLoginOpen && <LoginModal />}
 
-      {isChangelogOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
-          <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-lg w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="font-bold text-lg">Changelog</h2>
-              <button onClick={() => setIsChangelogOpen(false)} className="text-gray-400 hover:text-white">Close</button>
-            </div>
-            <div className="overflow-y-auto space-y-3 flex-1 pr-2">
-              {changelog.map(m => (
-                <div key={m.id} className="bg-[#2a2a2a] p-3 rounded flex justify-between items-center border border-[#333]">
-                  <div className="flex items-center gap-3">
-                    <img src={`/icons/${m.type}.png`} alt="icon" className="w-8 h-8 object-contain" />
-                    <div>
-                      <h3 className="font-bold text-sm flex items-center gap-2">
-                        {m.title}
-                        {m.status !== 'approved' && <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.status === 'pending-edit' ? 'bg-blue-600' : 'bg-green-600'}`}>{m.status === 'pending-edit' ? 'PENDING EDIT' : 'PENDING NEW'}</span>}
-                      </h3>
-                      <p className="text-xs text-gray-400">{m.type.replace(/-/g, ' ')} • {formatDate(m.createdAt, !!editorPassword)}{m.submitter && ` • By ${m.submitter}`}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => { setCurrentFloorId(m.floorId); setFlyToMarker(m); setIsChangelogOpen(false); }} className="bg-[#444] hover:bg-[#555] px-3 py-1.5 rounded text-xs font-bold transition-colors">Show on Map</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {isChangelogOpen && <ChangelogModal changelog={changelog} setIsChangelogOpen={setIsChangelogOpen} setCurrentFloorId={setCurrentFloorId} setFlyToMarker={setFlyToMarker} editorPassword={editorPassword} />}
 
       {isApprovalsOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center p-4">
@@ -501,11 +392,7 @@ export default function Home() {
         </div>
       )}
 
-      {enlargedImage && (
-        <div className="fixed inset-0 z-[4000] bg-black/90 flex items-center justify-center p-8 cursor-zoom-out backdrop-blur-sm" onClick={() => setEnlargedImage(null)}>
-          <img src={enlargedImage} className="max-w-full max-h-full object-contain rounded shadow-2xl" alt="Enlarged Location" />
-        </div>
-      )}
+      {enlargedImage && <Lightbox src={enlargedImage} onClose={() => setEnlargedImage(null)} />}
     </main>
   );
 }
