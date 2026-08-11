@@ -54,12 +54,22 @@ export default function Map({
     if (!editorPassword) {
       if (!confirm("Suggest removing this marker from the map?")) return;
       const res = await suggestDeleteMarker(id);
-      if (res.success) alert("Deletion suggestion submitted for approval.");
+      if (res.success) {
+        alert("Deletion suggestion submitted for approval.");
+      } else {
+        alert("Failed to submit suggestion.");
+      }
       return;
     }
+    
+    // Admin Delete
     if (!confirm("Are you sure you want to delete this marker?")) return;
     const res = await deleteMarker(id, editorPassword);
-    if (res.success) setMarkers((prev: any[]) => prev.filter(m => m.id !== id));
+    if (res.success) {
+      setMarkers((prev: any[]) => prev.filter((m: any) => m.id !== id));
+    } else {
+      alert("Failed to delete marker.");
+    }
   };
 
   return (
@@ -82,7 +92,7 @@ export default function Map({
       </MapContainer>
 
       <MarkerEditor 
-        mapName={mapName} currentFloorId={currentFloorId!} editorPassword={editorPassword} markerTypes={markerTypes} markers={markers} setMarkers={setMarkers} 
+        mapName={mapName} currentFloorId={currentFloorId} editorPassword={editorPassword} markerTypes={markerTypes} markers={markers} setMarkers={setMarkers} 
         pendingMarker={pendingMarker} setPendingMarker={setPendingMarker} editingMarkerId={editingMarkerId} setEditingMarkerId={setEditingMarkerId} 
         isRelocating={isRelocating} setIsRelocating={setIsRelocating} addLocalPendingId={addLocalPendingId}
       />

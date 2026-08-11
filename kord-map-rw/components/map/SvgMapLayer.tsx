@@ -3,19 +3,11 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
+import DOMPurify from 'dompurify'; // 🛡️ SECURITY IMPORT
 import { Floor } from '@/app/page';
 import { bounds, NATIVE_SIZE } from '../Map';
 
-interface SvgMapLayerProps {
-  url: string;
-  hardwareAcceleration: boolean;
-  currentFloorId: string | null;
-  onFloorsLoaded: (floors: Floor[]) => void;
-  setAllFloors: (floors: Floor[]) => void;
-  brightness: number;
-}
-
-export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId, onFloorsLoaded, setAllFloors, brightness }: SvgMapLayerProps) {
+export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId, onFloorsLoaded, setAllFloors, brightness }: any) {
   const map = useMap();
   const svgRef = useRef<SVGElement | null>(null);
   const floorsRef = useRef<Floor[]>([]);
@@ -23,10 +15,18 @@ export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId,
   useEffect(() => {
     let isMounted = true;
     let svgLayer: L.SVGOverlay | null = null;
-    fetch(url).then((res) => res.text()).then((svgText) => {
+    
+    fetch(url).then((res) => res.text()).then((rawSvgText) => {
         if (!isMounted) return;
+
+        const cleanSvgText = DOMPurify.sanitize(rawSvgText, {
+          USE_PROFILES: { svg: true, svgFilters: true }, // Allow SVG tags
+          FORBID_TAGS: ['script', 'style'], // Strictly forbid scripting
+          FORBID_ATTR: ['onmouseover', 'onload', 'onerror'] // Block inline events
+        });
+
         const parser = new DOMParser();
-        const doc = parser.parseFromString(svgText, "image/svg+xml");
+        const doc = parser.parseFromString(cleanSvgText, "image/svg+xml");
         const svgElement = doc.documentElement as unknown as SVGElement;
         if (!svgElement.getAttribute("viewBox")) svgElement.setAttribute("viewBox", `0 0 ${NATIVE_SIZE} ${NATIVE_SIZE}`);
         svgElement.setAttribute("shape-rendering", "optimizeSpeed");

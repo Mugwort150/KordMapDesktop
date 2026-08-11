@@ -4,11 +4,27 @@ import { useState, useEffect } from 'react';
 import { compressImage } from '@/lib/utils';
 import { createMarker, updateMarker, uploadImage } from '@/app/actions/markers';
 
+interface MarkerEditorProps {
+  mapName: string;
+  currentFloorId: string | null;
+  editorPassword?: string;
+  markerTypes: Record<string, string[]>;
+  markers: any[];
+  setMarkers: any;
+  pendingMarker: { lat: number; lng: number } | null;
+  setPendingMarker: (val: any) => void;
+  editingMarkerId: string | null;
+  setEditingMarkerId: (val: string | null) => void;
+  isRelocating: boolean;
+  setIsRelocating: (val: boolean) => void;
+  addLocalPendingId: (id: string) => void;
+}
+
 export default function MarkerEditor({ 
   mapName, currentFloorId, editorPassword, markerTypes, 
   pendingMarker, setPendingMarker, editingMarkerId, setEditingMarkerId, 
   isRelocating, setIsRelocating, markers, setMarkers, addLocalPendingId 
-}: any) {
+}: MarkerEditorProps) {
   
   const [formData, setFormData] = useState({ title: '', description: '', type: '', imageUrl: '', submitter: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -18,7 +34,6 @@ export default function MarkerEditor({
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
 
-  // Auto-fill form if editing
   useEffect(() => {
     if (editingMarkerId) {
       const m = markers.find((x: any) => x.id === editingMarkerId);
@@ -28,7 +43,6 @@ export default function MarkerEditor({
     }
   }, [editingMarkerId, markers]);
 
-  // Anti-Spam Timer
   useEffect(() => {
     const checkCooldown = () => {
       if (editorPassword) { setCooldownRemaining(0); return; }
@@ -102,7 +116,7 @@ export default function MarkerEditor({
       if (result?.success && result.marker) {
         if (!result.autoApproved && typeof addLocalPendingId === 'function') addLocalPendingId(result.marker.id);
         
-        if (editingMarkerId && result.autoApproved) setMarkers((prev: any[]) => prev.map(m => m.id === editingMarkerId ? result.marker : m));
+        if (editingMarkerId && result.autoApproved) setMarkers((prev: any[]) => prev.map((m: any) => m.id === editingMarkerId ? result.marker : m));
         else setMarkers((prev: any[]) => [result.marker, ...prev]);
 
         if (!editorPassword) {

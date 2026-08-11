@@ -1,6 +1,6 @@
 'use client';
 
-import { Map, ListFilter } from 'lucide-react';
+import { Map as MapIcon, ListFilter } from 'lucide-react';
 
 interface TitleScreenProps {
   mapsData: Record<string, { map_url: string; cover_url?: string; map_name?: string }>;
@@ -35,7 +35,8 @@ export default function TitleScreen({
     <main className="flex h-[100dvh] w-full bg-[#121212] overflow-hidden text-white relative">
       <div className="w-80 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-10 shrink-0">
         <div className="p-8 border-b border-[#333] text-center">
-          <Map size={48} className="text-[#e68c3a] mx-auto mb-4" />
+          {/* 🚀 FIXED: Using MapIcon instead of Map to avoid JS class collision */}
+          <MapIcon size={48} className="text-[#e68c3a] mx-auto mb-4" />
           <h1 className="text-3xl font-bold tracking-widest uppercase text-white">Kord Map</h1>
           <p className="text-sm text-gray-500 mt-2">Select a location to begin</p>
         </div>
