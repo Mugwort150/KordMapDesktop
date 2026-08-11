@@ -19,12 +19,17 @@ function ConnectionLinesOverlay({ hoveredFilter }: { hoveredFilter: string | nul
   useEffect(() => {
     if (!hoveredFilter) { setLines([]); return; }
     let animationFrameId: number;
+    
     const updateLines = () => {
       const filterEl = document.getElementById(`filter-${hoveredFilter}`);
-      if (!filterEl) return;
+      const sidebarEl = document.getElementById('kord-sidebar');
+      if (!filterEl || !sidebarEl) return;
+
+      const sidebarRect = sidebarEl.getBoundingClientRect();
       const filterIconEl = filterEl.querySelector('img');
       const startRect = (filterIconEl || filterEl).getBoundingClientRect();
-      const startX = 288;
+      
+      const startX = sidebarRect.right;
       const startY = startRect.top + startRect.height / 2;
 
       const markerEls = document.querySelectorAll(`.marker-type-${hoveredFilter}`);
@@ -47,7 +52,7 @@ function ConnectionLinesOverlay({ hoveredFilter }: { hoveredFilter: string | nul
   return (
     <svg className="fixed inset-0 w-full h-full pointer-events-none z-[1500]">
       {lines.map((line, i) => {
-        const elbowX = 310; 
+        const elbowX = line.x1 + 22; 
         return (
           <path 
             key={i} d={`M ${line.x1} ${line.y1} L ${elbowX} ${line.y1} L ${line.x2} ${line.y2}`} 
@@ -71,7 +76,6 @@ export default function Home() {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  // 🚀 Login & Security State
   const [editorPassword, setEditorPassword] = useState<string>('');
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [loginAttempts, setLoginAttempts] = useState(0);
@@ -94,7 +98,6 @@ export default function Home() {
   const [settings, setSettings] = useState<MapSettings>({ zoomStep: 1, hardwareAcceleration: true, iconScale: 1 });
   const [hoveredFilter, setHoveredFilter] = useState<string | null>(null); 
 
-  // Initialize Data
   useEffect(() => {
     fetch('/maps.json').then(r => r.json()).then(setMapsData).catch(e => console.error(e));
     fetch('/documents.json').then(r => r.json()).then(setGlobalDocTypes).catch(e => console.error(e));
@@ -105,7 +108,6 @@ export default function Home() {
     const savedAuth = sessionStorage.getItem('kordAuth');
     if (savedAuth) setEditorPassword(savedAuth);
     
-    // Load Lockout State
     const savedLockout = localStorage.getItem('kordLoginLockout');
     if (savedLockout) {
       const end = parseInt(savedLockout, 10);
@@ -114,7 +116,6 @@ export default function Home() {
     }
   }, []);
 
-  // Lockout Timer
   useEffect(() => {
     if (!lockoutTime) return;
     const interval = setInterval(() => {
@@ -165,7 +166,6 @@ export default function Home() {
     }
   }, [selectedMap, globalDocTypes]);
 
-  // 🚀 Secure Login Handler
   const handleLoginSubmit = async () => {
     if (lockoutTime || isVerifying || !editorPassword) return;
     setIsVerifying(true);
@@ -181,7 +181,7 @@ export default function Home() {
       const newAttempts = loginAttempts + 1;
       setLoginAttempts(newAttempts);
       if (newAttempts >= 5) {
-        const unlockTime = Date.now() + 60000; // Lockout for 60 seconds
+        const unlockTime = Date.now() + 60000;
         setLockoutTime(unlockTime);
         localStorage.setItem('kordLoginLockout', unlockTime.toString());
       } else {
@@ -227,10 +227,9 @@ export default function Home() {
 
   const changelog = [
     ...markers.filter(m => m.approved).map(m => ({ ...m, status: 'approved' })),
-    ...(editorPassword ? pendingQueue.map(m => ({ ...m, status: m.isDeletion ? 'pending-delete' : m.originalId ? 'pending-edit' : 'pending-new' })) : [])
+    ...(editorPassword ? pendingQueue.map(m => ({ ...m, status: m.originalId ? 'pending-edit' : 'pending-new' })) : [])
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  // Reusable Login Modal Component
   const LoginModal = () => (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[2000] flex items-center justify-center">
       <div className="bg-[#1a1a1a] border border-[#333] p-6 rounded-lg w-80 shadow-2xl">
@@ -266,8 +265,8 @@ export default function Home() {
     }));
 
     return (
-      <main className="flex h-screen w-full bg-[#121212] overflow-hidden text-white relative">
-        <div className="w-80 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-10">
+      <main className="flex h-[100dvh] w-full bg-[#121212] overflow-hidden text-white relative">
+        <div id="kord-sidebar" className="w-80 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-10 shrink-0">
           <div className="p-8 border-b border-[#333] text-center">
             <Map size={48} className="text-[#e68c3a] mx-auto mb-4" />
             <h1 className="text-3xl font-bold tracking-widest uppercase text-white">Kord Map</h1>
@@ -304,8 +303,8 @@ export default function Home() {
         </div>
 
         <div className="flex-1 flex flex-col relative h-full overflow-y-auto bg-[#0a0a0a]">
-          <div className="p-10 flex flex-col items-center justify-center min-h-full w-full">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-6xl w-full mb-auto mt-10">
+          <div className="p-6 md:p-10 flex flex-col items-center min-h-full w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 max-w-6xl w-full my-auto pt-10 pb-16">
               {Object.entries(mapsData).map(([name, data]) => {
                 const mapStats = globalStats.filter(m => m.mapName === name);
                 const pendingCount = globalPendingStats.filter(m => m.mapName === name).length;
@@ -317,15 +316,20 @@ export default function Home() {
                     <button onClick={() => setSelectedMap({ name, url: data.map_url })} className={`relative overflow-hidden group rounded-xl border-2 transition-all duration-500 flex flex-col items-center justify-center min-h-[250px] w-full ${hasRequiredFilters ? 'border-[#333] hover:border-[#e68c3a] hover:scale-105 shadow-2xl opacity-100' : 'border-[#222] opacity-30 grayscale scale-95 pointer-events-none'}`}>
                       {data.cover_url ? <div className="absolute inset-0 bg-cover bg-center blur-[8px] group-hover:blur-[2px] transition-all duration-700 scale-110 group-hover:scale-100" style={{ backgroundImage: `url(${data.cover_url})` }} /> : <div className="absolute inset-0 bg-[#1a1a1a]" />}
                       <div className="absolute inset-0 bg-black/70 group-hover:bg-black/50 transition-all duration-500" />
-                      <div className="relative z-10 flex flex-col items-center gap-4 w-full px-4">
-                        <h2 className="text-3xl font-bold uppercase tracking-wider text-white group-hover:text-[#e68c3a] transition-colors drop-shadow-lg">{name}</h2>
-                        <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-gray-300 bg-black/60 px-4 py-3 rounded-lg border border-[#444] backdrop-blur-sm max-w-full">
+                      
+                      <div className="relative z-10 flex flex-col items-center gap-3 sm:gap-4 w-full px-2 sm:px-4">
+                        {/* 🚀 DYNAMIC TEXT SCALING: Scales down gracefully when browser is zoomed in! */}
+                        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold uppercase tracking-wider text-white group-hover:text-[#e68c3a] transition-colors drop-shadow-lg text-center w-full break-words leading-tight px-1">
+                          {name}
+                        </h2>
+                        
+                        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs font-bold text-gray-300 bg-black/60 px-3 py-2 sm:px-4 sm:py-3 rounded-lg border border-[#444] backdrop-blur-sm w-full max-w-[95%]">
                           {Object.entries(mapTypeCounts).length > 0 ? (
                             Object.entries(mapTypeCounts).map(([typeId, count], i, arr) => (
                               <span key={typeId} className="flex items-center gap-2 whitespace-nowrap my-1">
-                                <img src={`/icons/${typeId}.png`} className="w-10 h-10 object-contain filter drop-shadow-md" alt="icon" />
-                                <span className="text-white text-xl">{count}</span>
-                                {i < arr.length - 1 && <span className="mx-3 text-gray-600">|</span>}
+                                <img src={`/icons/${typeId}.png`} className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 object-contain filter drop-shadow-md" alt="icon" />
+                                <span className="text-white text-base sm:text-lg md:text-xl">{count}</span>
+                                {i < arr.length - 1 && <span className="mx-2 sm:mx-3 text-gray-600">|</span>}
                               </span>
                             ))
                           ) : <span className="text-gray-500 py-1">No markers placed</span>}
@@ -338,7 +342,7 @@ export default function Home() {
               })}
             </div>
 
-            <div className="mt-16 pt-6 border-t border-[#222] text-xs text-gray-500 text-center flex flex-wrap gap-6 justify-center w-full max-w-4xl">
+            <div className="mt-auto pt-6 border-t border-[#222] text-xs text-gray-500 text-center flex flex-wrap gap-6 justify-center w-full max-w-4xl">
               <p>You can contribute to this project on <a href="https://github.com/KalleLeskinen/KordMap" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">GitHub</a></p>
               <p>Locations provided by users on VeryBadScav&apos;s <a href="https://discord.com/invite/AmuWBRMnVQ" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Discord</a></p>
               <p>Maps by <a href="https://github.com/the-hideout/tarkov-dev-svg-maps" target="_blank" rel="noopener noreferrer" className="text-[#e68c3a] hover:text-[#cf7d34] transition-colors font-semibold">Shebuka</a></p>
@@ -351,8 +355,8 @@ export default function Home() {
     );
   }
 
-      return (
-    <main className="flex h-screen w-full bg-[#121212] overflow-hidden text-white relative">
+  return (
+    <main className="flex h-[100dvh] w-full bg-[#121212] overflow-hidden text-white relative">
       <ConnectionLinesOverlay hoveredFilter={hoveredFilter} />
       <Sidebar 
         mapName={selectedMap.name} onClearMap={() => setSelectedMap(null)}
@@ -391,11 +395,7 @@ export default function Home() {
                     <div>
                       <h3 className="font-bold text-sm flex items-center gap-2">
                         {m.title}
-                        {m.status !== 'approved' && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.status === 'pending-delete' ? 'bg-red-600' : m.status === 'pending-edit' ? 'bg-blue-600' : 'bg-green-600'}`}>
-                            {m.status === 'pending-delete' ? 'PENDING DELETE' : m.status === 'pending-edit' ? 'PENDING EDIT' : 'PENDING NEW'}
-                          </span>
-                        )}
+                        {m.status !== 'approved' && <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.status === 'pending-edit' ? 'bg-blue-600' : 'bg-green-600'}`}>{m.status === 'pending-edit' ? 'PENDING EDIT' : 'PENDING NEW'}</span>}
                       </h3>
                       <p className="text-xs text-gray-400">{m.type.replace(/-/g, ' ')} • {formatDate(m.createdAt, !!editorPassword)}{m.submitter && ` • By ${m.submitter}`}</p>
                     </div>
@@ -428,10 +428,7 @@ export default function Home() {
                         <div>
                           <h3 className="font-bold text-[#e68c3a] uppercase text-xs flex items-center gap-2">
                             {m.type.replace(/-/g, ' ')}
-                            {/* 🚀 Dynamic Status Badges */}
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.isDeletion ? 'bg-red-600' : m.originalId ? 'bg-blue-600' : 'bg-green-600'}`}>
-                              {m.isDeletion ? 'DELETION' : m.originalId ? 'EDIT' : 'NEW'}
-                            </span>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] text-white font-bold tracking-wider ${m.isDeletion ? 'bg-red-600' : m.originalId ? 'bg-blue-600' : 'bg-green-600'}`}>{m.isDeletion ? 'DELETION' : m.originalId ? 'EDIT' : 'NEW'}</span>
                           </h3>
                           <p className="font-bold text-sm text-white">{m.title}</p>
                           {m.submitter && <p className="text-xs text-gray-400">By: {m.submitter}</p>}
@@ -450,13 +447,7 @@ export default function Home() {
                         }} className="bg-[#7a2c2c] hover:bg-[#8f3636] px-3 py-1.5 rounded text-xs font-bold text-white transition-colors">Reject</button>
                       </div>
                     </div>
-                    
-                    {/* 🚀 Show Deletion Warning OR Edit Diffs */}
-                    {m.isDeletion ? (
-                      <div className="mt-3 p-2 bg-[#1f1f1f] rounded border border-red-900/50 text-xs space-y-1">
-                        <p className="text-red-400 font-bold">User requested to permanently delete this marker.</p>
-                      </div>
-                    ) : orig && (
+                    {orig && (
                       <div className="mt-3 p-2 bg-[#1f1f1f] rounded border border-[#333] text-xs space-y-1">
                         <p className="text-gray-400 font-bold mb-1">Proposed Changes:</p>
                         {orig.title !== m.title && <p>Location: <span className="line-through text-gray-500">{orig.title}</span> <span className="text-green-400">➔ {m.title}</span></p>}
