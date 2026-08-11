@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { compressImage } from '@/lib/utils';
+import { AlertTriangle } from 'lucide-react';
 import { createMarker, updateMarker, uploadImage } from '@/app/actions/markers';
 
 interface MarkerEditorProps {
@@ -156,48 +157,87 @@ export default function MarkerEditor({
             <h3 className="font-bold text-lg">{editingMarkerId ? 'Edit Marker' : 'Place New Marker'}</h3>
             {editingMarkerId && <button onClick={() => setIsRelocating(true)} className="text-xs bg-[#222] border border-[#444] hover:bg-[#333] px-2 py-1 rounded">Move Marker</button>}
           </div>
-          <div className="space-y-4">
-            <div className="relative">
-              <label className="text-xs text-gray-400 uppercase font-bold">Category / Type</label>
-              <div className="w-full bg-[#2a2a2a] border border-[#444] rounded p-2 text-sm mt-1 cursor-pointer flex items-center gap-2" onClick={() => setIsDropdownOpen(!isDropdownOpen)}>
-                {formData.type ? <><img src={`/icons/${formData.type}.png`} alt="icon" className="w-5 h-5 object-contain" /><span className="capitalize">{formData.type.replace(/-/g, ' ')}</span></> : <span className="text-gray-500">Select marker type...</span>}
-              </div>
-              {isDropdownOpen && (
-                <div className="absolute top-full left-0 w-full mt-1 bg-[#2a2a2a] border border-[#444] rounded shadow-xl max-h-48 overflow-y-auto z-[2010]">
-                  {Object.entries(markerTypes).map(([category, types]) => (
-                    <div key={category}>
-                      <div className="px-2 py-1 text-xs font-bold text-gray-500 bg-[#222]">{category}</div>
-                      {types.map(type => {
-                        const typeId = type.toLowerCase().replace(/\s+/g, '-');
-                        return (
-                          <div key={typeId} className="flex items-center gap-2 p-2 hover:bg-[#333] cursor-pointer text-sm" onClick={() => { setFormData({...formData, type: typeId}); setIsDropdownOpen(false); }}>
-                            <img src={`/icons/${typeId}.png`} alt={type} className="w-5 h-5 object-contain" /><span>{type}</span>
-                          </div>
-                        );
-                      })}
+
+              <div className="space-y-4">
+                
+                {/* 🚀 Category / Type Input (With Warning Outline) */}
+                <div className="relative">
+                  <label className="text-xs text-gray-400 uppercase font-bold flex justify-between">
+                    Category / Type
+                  </label>
+                  <div 
+                    // Automatically glows red and shows triangle if left blank
+                    className={`w-full bg-[#2a2a2a] border ${!formData.type ? 'border-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : 'border-[#444] hover:border-[#e68c3a]'} rounded p-2 text-sm mt-1 cursor-pointer flex items-center justify-between transition-all`} 
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {formData.type ? (
+                        <>
+                          <img src={`/icons/${formData.type}.png`} alt="icon" className="w-5 h-5 object-contain" />
+                          <span className="capitalize">{formData.type.replace(/-/g, ' ')}</span>
+                        </>
+                      ) : <span className="text-red-400 font-medium">Select marker type...</span>}
                     </div>
-                  ))}
+                    {!formData.type && <AlertTriangle size={16} className="text-red-500" />}
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 w-full mt-1 bg-[#2a2a2a] border border-[#444] rounded shadow-xl max-h-48 overflow-y-auto z-[2010]">
+                      {Object.entries(markerTypes).map(([category, types]) => (
+                        <div key={category}>
+                          <div className="px-2 py-1 text-xs font-bold text-gray-500 bg-[#222]">{category}</div>
+                          {types.map(type => {
+                            const typeId = type.toLowerCase().replace(/\s+/g, '-');
+                            return (
+                              <div key={typeId} className="flex items-center gap-2 p-2 hover:bg-[#333] cursor-pointer text-sm" onClick={() => { setFormData({...formData, type: typeId}); setIsDropdownOpen(false); }}>
+                                <img src={`/icons/${typeId}.png`} alt={type} className="w-5 h-5 object-contain" />
+                                <span>{type}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase font-bold">Location</label>
-              <input type="text" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="w-full bg-[#2a2a2a] border border-[#444] rounded p-2 text-sm mt-1 outline-none focus:border-[#e68c3a]" placeholder="e.g. Castle barracks" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase font-bold">Submitter Name (Optional)</label>
-              <input type="text" value={formData.submitter} onChange={(e) => setFormData({...formData, submitter: e.target.value})} className="w-full bg-[#2a2a2a] border border-[#444] rounded p-2 text-sm mt-1 outline-none focus:border-[#e68c3a]" placeholder="Your name..." />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 uppercase font-bold flex justify-between"><span>Image</span><span className="text-gray-600 font-normal">URL, Drop, or Select</span></label>
-              <div className="flex gap-2 mt-1">
-                <input type="text" value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} className="flex-1 bg-[#2a2a2a] border border-[#444] rounded p-2 text-sm outline-none focus:border-[#e68c3a]" placeholder="https://..." />
-                <input type="file" id="file-upload" accept="image/*" className="hidden" onChange={handleFileSelect} />
-                <label htmlFor="file-upload" className="bg-[#333] hover:bg-[#444] border border-[#444] px-3 rounded flex items-center justify-center cursor-pointer text-xs font-bold transition-colors">FILE</label>
+
+                {/* 🚀 Location Input (With Warning Outline) */}
+                <div>
+                  <label className="text-xs text-gray-400 uppercase font-bold">Location</label>
+                  <div className="relative mt-1">
+                    <input 
+                      type="text" 
+                      value={formData.title} 
+                      onChange={(e) => setFormData({...formData, title: e.target.value})} 
+                      className={`w-full bg-[#2a2a2a] border ${!formData.title.trim() ? 'border-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]' : 'border-[#444] focus:border-[#e68c3a]'} rounded p-2 text-sm outline-none pr-8 transition-all`} 
+                      placeholder="e.g. Castle barracks" 
+                    />
+                    {!formData.title.trim() && <AlertTriangle size={16} className="text-red-500 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-xs text-gray-400 uppercase font-bold">Submitter Name (Optional)</label>
+                  <input type="text" value={formData.submitter} onChange={(e) => setFormData({...formData, submitter: e.target.value})} className="w-full bg-[#2a2a2a] border border-[#444] rounded p-2 text-sm mt-1 outline-none focus:border-[#e68c3a]" placeholder="Your name..." />
+                </div>
+                
+                <div>
+                  <label className="text-xs text-gray-400 uppercase font-bold flex justify-between">
+                    <span>Image</span>
+                    <span className="text-gray-600 font-normal">URL, Drop, or Select</span>
+                  </label>
+                  <div className="flex gap-2 mt-1">
+                    <input type="text" value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} className="flex-1 bg-[#2a2a2a] border border-[#444] rounded p-2 text-sm outline-none focus:border-[#e68c3a]" placeholder="https://..." />
+                    <input type="file" id="file-upload" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                    <label htmlFor="file-upload" className="bg-[#333] hover:bg-[#444] border border-[#444] px-3 rounded flex items-center justify-center cursor-pointer text-xs font-bold transition-colors">FILE</label>
+                  </div>
+                  {isProcessingImage ? (
+                     <div className="mt-2 text-[10px] text-blue-400 font-bold text-right animate-pulse">Processing...</div>
+                  ) : formData.imageUrl && formData.imageUrl.startsWith('data:image') ? (
+                     <div className="mt-2 text-[10px] text-green-500 font-bold text-right">✓ Image Attached</div>
+                  ) : null}
+                </div>
               </div>
-              {isProcessingImage ? <div className="mt-2 text-[10px] text-blue-400 font-bold text-right animate-pulse">Processing...</div> : formData.imageUrl && formData.imageUrl.startsWith('data:image') ? <div className="mt-2 text-[10px] text-green-500 font-bold text-right">✓ Image Attached</div> : null}
-            </div>
-          </div>
           <div className="flex gap-2 mt-5">
             <button onClick={handleCloseModal} className="flex-1 bg-[#333] hover:bg-[#444] py-2 rounded text-sm transition-colors">Cancel</button>
             <button onClick={handleSaveMarker} disabled={isSubmitting || isProcessingImage || !formData.title.trim() || !formData.type || cooldownRemaining > 0} className="flex-1 bg-[#e68c3a] hover:bg-[#cf7d34] disabled:opacity-50 disabled:cursor-not-allowed py-2 rounded text-sm transition-colors font-medium shadow text-black">

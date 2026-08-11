@@ -12,7 +12,7 @@ const getCustomIcon = (typeId: string, isGhost: boolean, direction: 'up' | 'down
   let arrowHtml = '';
   
   if (isGhost) {
-    ghostStyles = `opacity: 0.3; filter: grayscale(0.5);`; 
+    ghostStyles = `opacity: 0.6; filter: grayscale(0.5);`; 
     const arrowColor = direction === 'up' ? '#22c55e' : '#ef4444';
     const arrowChar = direction === 'up' ? '▲' : '▼';
     arrowHtml = `<div style="position: absolute; top: -${4 * scale}px; right: -${4 * scale}px; width: ${14 * scale}px; height: ${14 * scale}px; background: rgba(0,0,0,0.8); border-radius: 50%; border: 1px solid #444; color: ${arrowColor}; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: ${9 * scale}px; font-weight: bold; line-height: 1;">${arrowChar}</div>`;

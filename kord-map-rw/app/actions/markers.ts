@@ -12,13 +12,10 @@ EventEmitter.defaultMaxListeners = 50;
 
 const EDITOR_PASSWORD = process.env.EDITOR_PASSWORD;
 
-// -------------------------------------------------------------------------
-// 🛡️ SECURITY: RATE LIMITING SETUP
-// -------------------------------------------------------------------------
 const ratelimit = process.env.UPSTASH_REDIS_REST_URL
   ? new Ratelimit({
       redis: Redis.fromEnv(),
-      limiter: Ratelimit.slidingWindow(25, '1 h'),
+      limiter: Ratelimit.slidingWindow(10, '1 h'),
     })
   : null;
 
@@ -34,9 +31,6 @@ async function checkRateLimit(password?: string): Promise<boolean> {
   return success;
 }
 
-// -------------------------------------------------------------------------
-// 🛡️ SECURITY: SCHEMA VALIDATION (ZOD)
-// -------------------------------------------------------------------------
 const MarkerSchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(500).optional().nullable(),
@@ -50,6 +44,37 @@ const MarkerSchema = z.object({
 });
 
 const tarpit = async (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
+
+// -------------------------------------------------------------------------
+// 🚀 NEW: IMAGE HOSTING HELPER
+// -------------------------------------------------------------------------
+/**
+ * Downloads an external image URL and re-hosts it on Vercel Blob.
+ */
+async function ensureHostedImage(url: string | null | undefined): Promise<string | null | undefined> {
+  if (!url) return url;
+  
+  // Check if it's an external HTTP link and NOT already on Vercel Blob
+  if (url.startsWith('http') && !url.includes('vercel-storage.com')) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return url; // Fallback to original if download fails
+      
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const contentType = res.headers.get('content-type') || 'image/webp';
+      const extension = contentType.split('/')[1] || 'webp';
+      const filename = `marker-${Date.now()}-${Math.round(Math.random()*1000)}.${extension}`;
+      
+      const blob = await put(filename, buffer, { access: 'public', contentType });
+      return blob.url; // Return the new safe Vercel Blob URL
+    } catch(e) {
+      console.error("Failed to host external image", e);
+      return url;
+    }
+  }
+  return url;
+}
 
 // -------------------------------------------------------------------------
 // DATABASE ACTIONS
@@ -69,12 +94,8 @@ export async function uploadImage(base64Image: string): Promise<string | null> {
     if (!matches || matches.length !== 3) return null;
 
     const mimeType = matches[1];
-    
     const allowedTypes = ['image/webp', 'image/jpeg', 'image/png'];
-    if (!allowedTypes.includes(mimeType)) {
-      console.error("Security: Blocked invalid file type upload");
-      return null;
-    }
+    if (!allowedTypes.includes(mimeType)) return null;
 
     const buffer = Buffer.from(matches[2], 'base64');
     const extension = mimeType.split('/')[1];
@@ -95,12 +116,16 @@ export async function createMarker(rawData: any, password?: string) {
     const data = MarkerSchema.parse(rawData);
     const isEditor = Boolean(EDITOR_PASSWORD && password === EDITOR_PASSWORD);
     
+    // Auto-download external links if an admin skips the queue
+    if (isEditor && data.imageUrl) {
+      data.imageUrl = await ensureHostedImage(data.imageUrl);
+    }
+
     const newMarker = await prisma.marker.create({
       data: { ...data, approved: isEditor }
     });
     return { success: true, marker: newMarker, autoApproved: isEditor };
   } catch (error) {
-    console.error("Validation/DB Error:", error);
     return { success: false, error: "Invalid data or failed to save" };
   }
 }
@@ -114,8 +139,14 @@ export async function updateMarker(id: string, rawData: any, password?: string) 
     const isEditor = Boolean(EDITOR_PASSWORD && password === EDITOR_PASSWORD);
     
     if (isEditor) {
+      if (data.imageUrl) data.imageUrl = await ensureHostedImage(data.imageUrl);
+      
       const updatedMarker = await prisma.marker.update({
-        where: { id }, data
+        where: { id }, 
+        data: {
+          ...data,
+          lastEditor: data.submitter || "Admin" // 🚀 Track Admin Edit
+        }
       });
       return { success: true, marker: updatedMarker, autoApproved: true };
     } else {
@@ -129,7 +160,7 @@ export async function updateMarker(id: string, rawData: any, password?: string) 
   }
 }
 
-export async function suggestDeleteMarker(id: string) {
+export async function suggestDeleteMarker(id: string, reason: string) {
   await tarpit();
   if (!(await checkRateLimit())) return { success: false, error: "Rate limit exceeded. Try again later." };
 
@@ -142,7 +173,8 @@ export async function suggestDeleteMarker(id: string) {
         title: original.title, description: original.description, lat: original.lat, lng: original.lng,
         floorId: original.floorId, type: original.type, imageUrl: original.imageUrl, 
         submitter: "Guest (Deletion Request)", mapName: original.mapName,
-        approved: false, originalId: id, isDeletion: true 
+        approved: false, originalId: id, isDeletion: true,
+        deletionReason: reason // 🚀 Saved to DB
       }
     });
     return { success: true, marker: pendingDelete };
@@ -154,10 +186,6 @@ export async function verifyEditorPassword(password: string) {
   return Boolean(EDITOR_PASSWORD && password === EDITOR_PASSWORD);
 }
 
-// -------------------------------------------------------------------------
-// UNAUTHENTICATED READS
-// -------------------------------------------------------------------------
-
 export async function getAllApprovedMarkerStats() {
   return prisma.marker.findMany({ where: { approved: true }, select: { mapName: true, type: true } });
 }
@@ -168,10 +196,6 @@ export async function getMarkers(mapName: string, localPendingIds: string[] = []
     orderBy: { createdAt: 'desc' } 
   });
 }
-
-// -------------------------------------------------------------------------
-// AUTHENTICATED ADMIN ACTIONS
-// -------------------------------------------------------------------------
 
 export async function getAllPendingMarkerStats(password: string) {
   if (!EDITOR_PASSWORD || password !== EDITOR_PASSWORD) return [];
@@ -186,9 +210,41 @@ export async function getPendingMarkers(password: string, mapName: string) {
 
 export async function approveMarker(id: string, password: string) {
   if (!EDITOR_PASSWORD || password !== EDITOR_PASSWORD) return { success: false };
-  const marker = await prisma.marker.findUnique({ where: { id } });
-  if (marker?.originalId) await prisma.marker.delete({ where: { id: marker.originalId } }).catch(() => {});
-  await prisma.marker.update({ where: { id }, data: { approved: true, originalId: null } });
+  const pending = await prisma.marker.findUnique({ where: { id } });
+  
+  if (pending?.isDeletion) {
+    if (pending.originalId) await prisma.marker.delete({ where: { id: pending.originalId } }).catch(() => {});
+    await prisma.marker.delete({ where: { id } });
+    return { success: true };
+  }
+
+  let finalImageUrl = pending?.imageUrl;
+  if (finalImageUrl) finalImageUrl = await ensureHostedImage(finalImageUrl);
+
+  // 🚀 MERGE EDIT: Update the original marker with the new data, and log the editor
+  if (pending?.originalId) {
+    await prisma.marker.update({
+      where: { id: pending.originalId },
+      data: {
+        title: pending.title,
+        description: pending.description,
+        lat: pending.lat,
+        lng: pending.lng,
+        floorId: pending.floorId,
+        type: pending.type,
+        imageUrl: finalImageUrl,
+        lastEditor: pending.submitter || "Guest", // Save the editor's name!
+      }
+    });
+    await prisma.marker.delete({ where: { id } }); // Delete the pending proposal
+    return { success: true };
+  }
+  
+  // Standard new marker approval
+  await prisma.marker.update({ 
+    where: { id }, 
+    data: { approved: true, originalId: null, imageUrl: finalImageUrl } 
+  });
   return { success: true };
 }
 

@@ -3,11 +3,20 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import DOMPurify from 'dompurify'; // 🛡️ SECURITY IMPORT
+import DOMPurify from 'dompurify'; // 🛡️ Keep the security!
 import { Floor } from '@/app/page';
 import { bounds, NATIVE_SIZE } from '../Map';
 
-export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId, onFloorsLoaded, setAllFloors, brightness }: any) {
+interface SvgMapLayerProps {
+  url: string;
+  hardwareAcceleration: boolean;
+  currentFloorId: string | null;
+  onFloorsLoaded: (floors: Floor[]) => void;
+  setAllFloors: (floors: Floor[]) => void;
+  brightness: number;
+}
+
+export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId, onFloorsLoaded, setAllFloors, brightness }: SvgMapLayerProps) {
   const map = useMap();
   const svgRef = useRef<SVGElement | null>(null);
   const floorsRef = useRef<Floor[]>([]);
@@ -19,16 +28,26 @@ export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId,
     fetch(url).then((res) => res.text()).then((rawSvgText) => {
         if (!isMounted) return;
 
+        // 🚀 FIX: Removed 'style' from FORBID_TAGS so the map keeps its colors!
         const cleanSvgText = DOMPurify.sanitize(rawSvgText, {
-          USE_PROFILES: { svg: true, svgFilters: true }, // Allow SVG tags
-          FORBID_TAGS: ['script', 'style'], // Strictly forbid scripting
-          FORBID_ATTR: ['onmouseover', 'onload', 'onerror'] // Block inline events
+          USE_PROFILES: { svg: true, svgFilters: true },
+          FORBID_TAGS: ['script'], 
+          FORBID_ATTR: ['onmouseover', 'onload', 'onerror']
         });
-
+        
         const parser = new DOMParser();
         const doc = parser.parseFromString(cleanSvgText, "image/svg+xml");
         const svgElement = doc.documentElement as unknown as SVGElement;
-        if (!svgElement.getAttribute("viewBox")) svgElement.setAttribute("viewBox", `0 0 ${NATIVE_SIZE} ${NATIVE_SIZE}`);
+        
+        // 🚀 FIX: Ensure the XML namespace is present so browsers parse the CSS correctly
+        if (!svgElement.getAttribute("xmlns")) {
+          svgElement.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+        }
+
+        if (!svgElement.getAttribute("viewBox")) {
+          svgElement.setAttribute("viewBox", `0 0 ${NATIVE_SIZE} ${NATIVE_SIZE}`);
+        }
+        
         svgElement.setAttribute("shape-rendering", "optimizeSpeed");
         svgElement.style.pointerEvents = 'none';
         
@@ -54,7 +73,11 @@ export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId,
         const uiFloors = extractedFloors.filter(f => f.name.toLowerCase().trim() !== 'ground level');
         onFloorsLoaded(uiFloors);
       });
-    return () => { isMounted = false; if (svgLayer) map.removeLayer(svgLayer); };
+      
+    return () => { 
+      isMounted = false; 
+      if (svgLayer) map.removeLayer(svgLayer); 
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, url]);
 
@@ -70,6 +93,7 @@ export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId,
 
   useEffect(() => {
     if (!svgRef.current || !currentFloorId || floorsRef.current.length === 0) return;
+    
     const floors = floorsRef.current;
     const currentIndex = floors.findIndex(f => f.id === currentFloorId);
     if (currentIndex === -1) return;
@@ -84,15 +108,24 @@ export default function SvgMapLayer({ url, hardwareAcceleration, currentFloorId,
       gNode.style.transition = 'opacity 0.4s ease-in-out, filter 0.4s ease-in-out, visibility 0.4s ease-in-out';
 
       if (floor.name.toLowerCase().trim() === 'ground level' && isFirstFloorSelected) {
-        gNode.style.visibility = 'visible'; gNode.style.opacity = '1'; gNode.style.filter = 'none'; return; 
+        gNode.style.visibility = 'visible'; 
+        gNode.style.opacity = '1'; 
+        gNode.style.filter = 'none'; 
+        return; 
       }
       
       if (index > currentIndex) { 
-        gNode.style.visibility = 'hidden'; gNode.style.opacity = '0'; gNode.style.filter = 'none';
+        gNode.style.visibility = 'hidden'; 
+        gNode.style.opacity = '0'; 
+        gNode.style.filter = 'none';
       } else if (index === currentIndex) { 
-        gNode.style.visibility = 'visible'; gNode.style.opacity = '1'; gNode.style.filter = 'none'; 
+        gNode.style.visibility = 'visible'; 
+        gNode.style.opacity = '1'; 
+        gNode.style.filter = 'none'; 
       } else if (index < currentIndex) { 
-        gNode.style.visibility = 'visible'; gNode.style.opacity = '0.35'; gNode.style.filter = 'brightness(0.25) grayscale(0.6)'; 
+        gNode.style.visibility = 'visible'; 
+        gNode.style.opacity = '0.35'; 
+        gNode.style.filter = 'brightness(0.25) grayscale(0.6)'; 
       }
     });
   }, [currentFloorId]);
