@@ -21,8 +21,8 @@ interface SidebarProps {
   activeFilters: string[];
   setActiveFilters: (filters: string[]) => void;
   setHoveredFilter: (filter: string | null) => void;
-  hoveredFilter: string | null; // 🚀 ADDED
-  markers: any[];               // 🚀 ADDED
+  hoveredFilter: string | null; 
+  markers: any[];               
 }
 
 export default function Sidebar({ 
@@ -31,7 +31,6 @@ export default function Sidebar({
   markerTypes, activeFilters, setActiveFilters, setHoveredFilter, hoveredFilter, markers
 }: SidebarProps) {
 
-  // Flatten documents.json into a single list of types
   const allTypes = Object.values(markerTypes).flat();
 
   const toggleFilter = (typeId: string) => {
@@ -43,9 +42,8 @@ export default function Sidebar({
   };
 
   return (
-    <div className="w-72 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-[1000]">
+    <div id="kord-sidebar" className="w-72 bg-[#1a1a1a] border-r border-[#333] flex flex-col shadow-2xl z-[1000] relative">
       
-      {/* Centered Header */}
       <div className="p-5 border-b border-[#333] text-center">
         <h1 className="text-2xl font-bold tracking-wider uppercase text-white mb-3">{mapName}</h1>
         <button onClick={onClearMap} className="w-full flex items-center justify-center gap-2 bg-[#2a2a2a] hover:bg-[#333] transition-colors py-2 rounded text-sm text-gray-300 font-medium">
@@ -70,7 +68,6 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* 🚀 Dynamic Filters with Segmentation and Counters */}
       <div className="p-4 border-b border-[#333]">
         <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 px-1 flex items-center gap-2">
           <ListFilter size={14} /> Filters
@@ -106,7 +103,6 @@ export default function Sidebar({
                   </span>
                 </div>
                 
-                {/* 🚀 Dynamic Counter Badge */}
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                   isActive ? 'bg-[#333] text-gray-300' : 'bg-[#1a1a1a] text-gray-600'
                 }`}>
