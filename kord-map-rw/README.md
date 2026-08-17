@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KordMap Desktop
 
-## Getting Started
+Offline desktop build of [KordMap](https://github.com/KalleLeskinen/KordMap), packaged with
+[Tauri](https://tauri.app). This fork removes every runtime network dependency: map SVGs, cover
+images and Leaflet assets are bundled, and markers live in a local file instead of Postgres.
 
-First, run the development server:
+## Differences from upstream
+
+| | upstream | this fork |
+| --- | --- | --- |
+| Map SVGs | fetched from `raw.githubusercontent.com` at runtime | bundled in `public/maps/` |
+| Cover images | fetched from the Tarkov wiki CDN | bundled in `public/covers/` |
+| Leaflet marker images | fetched from unpkg | bundled in `public/leaflet/` |
+| Markers | Postgres + Vercel Blob + approval queue | `markers.json` in the app data dir (desktop) or `localStorage` (browser) |
+| Editing | password-protected, moderated | always unlocked; the local user owns the data |
+| Hosting | Next.js server on Vercel | `output: 'export'` static build inside a Tauri window |
+
+Because there is a single local owner, the approval queue is always empty and every edit is applied
+immediately. The action signatures in `app/actions/markers.ts` still accept the upstream
+`password` arguments so the UI components are untouched.
+
+## Requirements
+
+- Node.js 22+
+- Rust stable 1.86+ (`edition2024` support is required by Tauri's dependency tree)
+- Linux only: `libwebkit2gtk-4.1-dev build-essential libxdo-dev libssl-dev librsvg2-dev pkg-config`
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run desktop:dev    # Tauri window against the Next.js dev server
+npm run dev            # browser-only, markers persist in localStorage
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Building the app
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run desktop:build  # static export + native bundle in src-tauri/target/release/bundle
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Windows/macOS bundles are produced by the `desktop-build` GitHub Actions workflow, since Tauri
+cannot cross-compile from Linux.
 
-## Learn More
+## Where the data lives
 
-To learn more about Next.js, take a look at the following resources:
+| Platform | Path |
+| --- | --- |
+| Linux | `~/.local/share/jp.mugwort.kordmapdesktop/markers.json` |
+| Windows | `%APPDATA%\jp.mugwort.kordmapdesktop\markers.json` |
+| macOS | `~/Library/Application Support/jp.mugwort.kordmapdesktop/markers.json` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Marker screenshots are written next to it under `images/`. On first launch the file is seeded from
+`public/markers.json`. Settings import/export in the app UI works with the same JSON shape, so
+markers can be moved between machines.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Refreshing the bundled map assets
 
-## Deploy on Vercel
+`scripts/asset-sources.json` records the original upstream URL of every map and cover image.
+Re-download them (and rewrite `public/maps.json` plus any remote `<image href>` inside an SVG) with:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run fetch:assets
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This is the only step that needs an internet connection.
+
+## Credits & Licensing
+
+See [../readme.md](../readme.md) for the full attribution list. KordMap and the bundled map assets
+are licensed [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); this modified
+desktop version is distributed under the same license, non-commercially, with the original credits
+kept in the app UI.
+
+This project is entirely unofficial and is not endorsed by or affiliated with Battlestate Games.

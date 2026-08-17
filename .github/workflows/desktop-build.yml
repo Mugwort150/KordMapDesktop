@@ -1,0 +1,55 @@
+name: desktop-build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+          - os: windows-latest
+          - os: macos-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: kord-map-rw
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kord-map-rw/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: kord-map-rw/src-tauri
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
+
+      - run: npm ci
+      - run: npm run desktop:build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kord-map-desktop-${{ matrix.os }}
+          path: |
+            kord-map-rw/src-tauri/target/release/bundle/**/*.AppImage
+            kord-map-rw/src-tauri/target/release/bundle/**/*.deb
+            kord-map-rw/src-tauri/target/release/bundle/**/*.msi
+            kord-map-rw/src-tauri/target/release/bundle/**/*.exe
+            kord-map-rw/src-tauri/target/release/bundle/**/*.dmg
+          if-no-files-found: warn

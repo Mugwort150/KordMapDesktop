@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 import SettingsModal from '@/components/SettingsModal';
 import Lightbox from '@/components/modals/Lightbox';
-import { getMarkers, getPendingMarkers, approveMarker, deleteMarker, getAllApprovedMarkerStats, getAllPendingMarkerStats, verifyEditorPassword } from '@/app/actions/markers';
+import { getMarkers, getPendingMarkers, approveMarker, deleteMarker, getAllApprovedMarkerStats, getAllPendingMarkerStats, verifyEditorPassword, LOCAL_EDITOR_TOKEN } from '@/app/actions/markers';
 import { Map as MapIcon, ListFilter, AlertTriangle } from 'lucide-react';
 
 const MapWrapper = dynamic(() => import('@/components/MapWrapper'), { ssr: false });
@@ -106,8 +106,8 @@ export default function Home() {
 
     const saved = localStorage.getItem('kordSettings');
     if (saved) setSettings(JSON.parse(saved));
-    const savedAuth = sessionStorage.getItem('kordAuth');
-    if (savedAuth) setEditorPassword(savedAuth);
+    // The desktop build has a single local owner, so editing is always unlocked.
+    setEditorPassword(LOCAL_EDITOR_TOKEN);
     
     const savedLockout = localStorage.getItem('kordLoginLockout');
     if (savedLockout) {
@@ -201,7 +201,7 @@ export default function Home() {
   };
 
   const saveSettings = (s: MapSettings) => { setSettings(s); localStorage.setItem('kordSettings', JSON.stringify(s)); };
-  const handleLogout = () => { sessionStorage.removeItem('kordAuth'); setEditorPassword(''); setIsApprovalsOpen(false); };
+  const handleLogout = () => { setIsApprovalsOpen(false); };
 
   const loadApprovals = async () => {
     if (!selectedMap) return;
